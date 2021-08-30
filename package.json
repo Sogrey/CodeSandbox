@@ -9,6 +9,5 @@
   "author": "Sogrey",
   "license": "MIT",
   "dependencies": {
-    "codemirror": "^5.62.3"
   }
 }

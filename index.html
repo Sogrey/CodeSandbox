@@ -1,57 +1,162 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <!--begin code mirror -->
 <!--下面两个是使用Code Mirror必须引入的-->
-<link rel="stylesheet" href="./node_modules/codemirror/lib/codemirror.css"/>
-<script src="./node_modules/codemirror/lib/codemirror.js"></script>
-<!--Java代码高亮必须引入-->
-<script src="./node_modules/codemirror/mode/clike/clike.js"></script>
-<!--groovy代码高亮-->
-<script src="./node_modules/codemirror/mode/groovy/groovy.js"></script>
+<link rel="stylesheet" href="./plugins/codemirror/lib/codemirror.css" />
+<script src="./plugins/codemirror/lib/codemirror.js"></script>
+<!--Html代码高亮-->
+<script src="./plugins/codemirror/mode/htmlmixed/htmlmixed.js"></script>
+<script src="./plugins/codemirror/mode/xml/xml.js"></script>
+<!--css代码高亮-->
+<script src="./plugins/codemirror/mode/css/css.js"></script>
 <!--javascript代码高亮-->
-<script src="./node_modules/codemirror/mode/javascript/javascript.js"></script>
+<script src="./plugins/codemirror/mode/javascript/javascript.js"></script>
 <!--引入css文件，用以支持主题-->
-<link rel="stylesheet" href="./node_modules/codemirror/theme/dracula.css"/>
+<link rel="stylesheet" href="./plugins/codemirror/theme/dracula.css" />
 
 <!--支持代码折叠-->
-<link rel="stylesheet" href="./node_modules/codemirror/addon/fold/foldgutter.css"/>
-<script src="./node_modules/codemirror/addon/fold/foldcode.js"></script>
-<script src="./node_modules/codemirror/addon/fold/foldgutter.js"></script>
-<script src="./node_modules/codemirror/addon/fold/brace-fold.js"></script>
-<script src="./node_modules/codemirror/addon/fold/comment-fold.js"></script>
+<link rel="stylesheet" href="./plugins/codemirror/addon/fold/foldgutter.css" />
+<script src="./plugins/codemirror/addon/fold/foldcode.js"></script>
+<script src="./plugins/codemirror/addon/fold/foldgutter.js"></script>
+<script src="./plugins/codemirror/addon/fold/brace-fold.js"></script>
+<script src="./plugins/codemirror/addon/fold/comment-fold.js"></script>
 <!--括号匹配-->
-<script src="./node_modules/codemirror/addon/edit/matchbrackets.js"></script>
+<script src="./plugins/codemirror/addon/edit/matchbrackets.js"></script>
+
+<script src="./plugins/codemirror/addon/selection/selection-pointer.js"></script>
+<link rel="stylesheet" href="./plugins/codemirror/addon/scroll/simplescrollbars.css">
+<script src="./plugins/codemirror/addon/scroll/simplescrollbars.js"></script>
 <!--end Code Mirror -->
- 
+
+
+<!-- Third party plug-in -->
+<!-- beautify -->
+<script src="./plugins/js-beautify/1.14.0/beautify.min.js"></script>
+<script src="./plugins/js-beautify/1.14.0/beautify-css.min.js"></script>
+<script src="./plugins/js-beautify/1.14.0/beautify-html.min.js"></script>
+
+<style>
+    @import url(https://cdn.jsdelivr.net/gh/tonsky/FiraCode@1.206/distr/fira_code.css);
+
+    * {
+        margin: 0;
+        padding: 0;
+    }
+
+    html,body {
+        width: 100%;
+        height: 100%;
+        background-color: black;
+    }
+
+    .CodeMirror-wrap {
+        font-family: 'Fira Code', monospace;
+    }
+
+    .template-3col>.CodeMirror-wrap {
+        height: 50vh;
+        width: 33vw;
+        float: left;
+        margin-left: 0.5vw;
+    }
+
+    .template-3col>.form-control.first+.CodeMirror-wrap {
+        margin-left: 0;
+    }
+
+    /* 滚动条 */
+    .CodeMirror-simplescroll-horizontal div,.CodeMirror-simplescroll-vertical div {
+        position: absolute;
+        background: #000;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+        border: 1px solid #bbb;
+    }
+</style>
+
 <head>
-    <meta charset="utf-8"/>
+    <meta charset="utf-8" />
     <title>代码框</title>
 </head>
+
 <body>
     <!-- begin code -->
-    <textarea class="form-control" id="code" name="code"></textarea>
+    <div class="template-3col">
+        <textarea class="form-control first" id="code-html" name="code"></textarea>
+        <textarea class="form-control" id="code-css" name="code"></textarea>
+        <textarea class="form-control" id="code-javascript" name="code"></textarea>
+    </div>
     <!-- end code-->
-</div>
+    </div>
 
-<script>
-    //根据DOM元素的id构造出一个编辑器
-    var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
-        mode: "text/groovy",    //实现groovy代码高亮
-        mode: "text/x-java", //实现Java代码高亮
-        mode: "text/javascript", //实现Java代码高亮
-        lineNumbers: true,	//显示行号
-        theme: "dracula",	//设置主题
-        lineWrapping: true,	//代码折叠
-        foldGutter: true,
-        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
-        matchBrackets: true,	//括号匹配
-        //readOnly: true,        //只读
-    });
-    editor.setSize('800px', '950px');     //设置代码框的长宽
-    editor.setValue("");    //先代码框的值清空
-    editor.setValue(obj.scriptCode);    //给代码框赋值
+    <script>
+        var htmlCode = document.body.innerHTML;
+        var cssCode = document.querySelector("style").innerHTML;
+        var scriptCode = document.body.querySelector('script').innerHTML;
 
-    // editor.setOption("readOnly", true);
-</script>
+        var editorHtml, editorCss, editorJavascript;
+
+        function _createEditor(textareaId, mode, defaultCode) {
+
+            var editorMode = "";
+
+            switch (mode) {
+                case "html":
+                    editorMode = "text/html";
+                    break;
+                case "css":
+                    editorMode = "text/css";
+                    break;
+                case "javascript":
+                    editorMode = "text/typescript";
+                    break;
+
+                default:
+                    break;
+            }
+
+            //根据DOM元素的id构造出一个编辑器
+            var editor = CodeMirror.fromTextArea(document.getElementById(textareaId), {
+                // mode: "text/html", //实现代码高亮
+                // mode: "text/css", //实现代码高亮
+                // mode: "text/typescript", //实现代码高亮
+                mode: editorMode, //实现代码高亮
+                lineNumbers: true, //显示行号
+                theme: "dracula", //设置主题
+                lineWrapping: true, //代码折叠
+                foldGutter: true,
+                gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+                matchBrackets: true, //括号匹配
+                selectionPointer: true,
+                scrollbarStyle: "simple",
+                extraKeys: {
+                    "Ctrl-Space": "autocomplete"
+                } //ctrl-space唤起智能提示
+                //readOnly: true,        //只读
+            });
+            // editor.setSize('800px', '950px'); //设置代码框的长宽
+            editor.setValue(""); //先代码框的值清空
+            editor.setValue(defaultCode); //给代码框赋值
+
+            // editor.setOption("readOnly", true); 
+
+            return editor;
+        }
+
+        editorHtml = _createEditor("code-html", "html", html_beautify(htmlCode, {
+            indent_size: 2,
+            space_in_empty_paren: true
+        }));
+        editorCss = _createEditor("code-css", "css", css_beautify(cssCode, {
+            indent_size: 2,
+            space_in_empty_paren: true
+        }));
+        editorJavascript = _createEditor("code-javascript", "javascript", js_beautify(scriptCode, {
+            indent_size: 2,
+            space_in_empty_paren: true
+        }));
+    </script>
 </body>
+
 </html>

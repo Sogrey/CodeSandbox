@@ -78,6 +78,8 @@
     .result_iframe>iframe {
         width: 100%;
         height: 100%;
+        border: 0 none;
+        background-color: #fff;
     }
 
     /* 滚动条 */
@@ -88,6 +90,14 @@
         -moz-box-sizing: border-box;
         box-sizing: border-box;
         border: 1px solid #bbb;
+        border-radius: 5px;
+    }
+
+    .CodeMirror-simplescroll-horizontal,
+    .CodeMirror-simplescroll-vertical {
+        position: absolute;
+        z-index: 6;
+        background: rgb(70, 69, 69);
     }
 </style>
 
@@ -104,7 +114,7 @@
         <textarea class="form-control" id="code-javascript" name="code"></textarea>
     </div>
     <div class="result_iframe">
-        <iframe>您的浏览器不支持iframe，请升级使用最新版本。</iframe>
+        <iframe id="iframe-sandbox" src="./template.html" frameBorder="0">您的浏览器不支持iframe，请升级使用最新版本。</iframe>
     </div>
     <!-- end code-->
     </div>

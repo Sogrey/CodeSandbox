@@ -29,6 +29,8 @@
 <!-- 滚动条 -->
 <link rel="stylesheet" href="./plugins/codemirror/addon/scroll/simplescrollbars.css">
 <script src="./plugins/codemirror/addon/scroll/simplescrollbars.js"></script>
+<!-- placeholder -->
+<script src="./plugins/codemirror/addon/display/placeholder.js"></script>
 <!--end Code Mirror -->
 
 <!-- Third party plug-in -->
@@ -109,9 +111,10 @@
 <body class="bg000">
     <!-- begin code -->
     <div class="template-3col">
-        <textarea class="form-control first" id="code-html" name="code"></textarea>
-        <textarea class="form-control" id="code-css" name="code"></textarea>
-        <textarea class="form-control" id="code-javascript" name="code"></textarea>
+        <textarea class="form-control first" id="code-html" name="code" placeholder="HTML Code goes here..."></textarea>
+        <textarea class="form-control" id="code-css" name="code" placeholder="CSS style Code goes here..."></textarea>
+        <textarea class="form-control" id="code-javascript" name="code"
+            placeholder="Javascript Code goes here..."></textarea>
     </div>
     <div class="result_iframe">
         <iframe id="iframe-sandbox" src="./template.html" frameBorder="0">您的浏览器不支持iframe，请升级使用最新版本。</iframe>
@@ -169,6 +172,19 @@
             editor.setValue(defaultCode); //给代码框赋值
 
             // editor.setOption("readOnly", true); 
+
+            editor.on("change", function (self, changes) {
+                console.log(changes);
+                // while (changes) {
+                //     self.replaceRange(changes.text.join("\n"), changes.from, changes.to);
+                //     changes = changes.next;
+                // }
+            });
+
+            // editor.on('change', cm => {
+            //     cm.save();
+            //     this.code = cm.getValue();
+            // });
 
             return editor;
         }

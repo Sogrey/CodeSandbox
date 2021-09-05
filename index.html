@@ -125,11 +125,12 @@
 
     <script>
         var htmlCode =
-            `<h2>todos</h2><form class="form" id="form">  <input type="text" class="input" placeholder="Enter your todo">  <ul id="todo-list" class="todo-list"></ul></form><small>  Left click to toggle completed.<br>  Right click to delete todo</small>`; // document.body.innerHTML;
+            `<h2>Todos</h2><form class="form" id="form">  <input type="text" class="input" placeholder="Enter your todo">  <ul id="todo-list" class="todo-list"></ul></form><small>  Left click to toggle completed.<br>  Right click to delete todo.</small>`; // document.body.innerHTML;
         var cssCode =
             `* {  margin: 0;  padding: 0;  box-sizing: border-box;}body {  height: 100vh;  display: flex;  font-family: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;  justify-content: center;  align-items: center;  flex-direction: column;  background: linear-gradient(135deg, #f2fef2 10%, #f5f6f7 90%);  padding: 3%;}h2 {  color: #bb14ca;  opacity: 0.4;  text-align: center;  font-size: 8rem;  margin: 1rem 0;}.form {  width: 100%;  max-width: 400px;  margin: 0 auto;  box-shadow: 2px 3px 8px rgba(246, 234, 222, 0.46);}.form > .input {  padding: 1rem 2rem;  width: 100%;  display: block;  border: 2px solid #dededf;  outline: none;  font-size: 1.4rem;  border-radius: 5px 5px 0 0;}.form > .todo-list {  list-style: none;  background: linear-gradient(135deg, #dadada 10%, #ffffff 90%);}.form > .todo-list > li {  padding: 1.4rem 2rem;  cursor: pointer;  color: #535353;  border-top: 1px solid #535455;}.form > .todo-list > li:last-of-type {  border-radius: 0 0 5px 5px;}.form > .todo-list > li.complete {  color: #423f3f;  text-decoration: line-through;}small {  margin-top: 3rem;  text-align: center;  font-size: 1rem;  color: #a5a7a8;    display: block;}`; // document.querySelector("style").innerHTML;
         var scriptCode =
             `const $ = (v, el = document) => el.querySelector(v);const $$ = (v, el = document) => el.querySelectorAll(v); \r\n\r\n const form = $("#form");const todoList = $("#todo-list");const input = $(".input", form); \r\n\r\n const todoData = localStorage.getItem("todoData");if (todoData) {  const _todoData = JSON.parse(todoData) || [];  _todoData.forEach((todo) => addTodo(todo));}form.addEventListener("submit", (e) => {  e.preventDefault();  addTodo();});function addTodo(todo) {  let inputValue = input.value;  if (todo) {    inputValue = todo.text;  }  if (inputValue) {    const liItem = document.createElement("li");    liItem.innerText = inputValue;    if (todo && todo.complete) {      liItem.classList.add("complete");    }    liItem.addEventListener("click", () => {      liItem.classList.toggle("complete");      updateList();    });    liItem.addEventListener("contextmenu", (e) => {      e.preventDefault();      liItem.remove();      updateList();    });    todoList.appendChild(liItem);    input.value = "";    updateList();  }}function updateList() {  const listItem = $$("li", todoList);  const saveTodoData = [];  listItem.forEach((item) => {    saveTodoData.push({      text: item.innerText,      complete: item.classList.contains("complete")    });  });  localStorage.setItem("todoData", JSON.stringify(saveTodoData));}`; // document.body.querySelector('script').innerHTML;
+
         var iframeEle, idocument, cssStyleElement, contentElement, javascriptElement;
 
         var editorHtml, editorCss, editorJavascript;
@@ -178,18 +179,12 @@
                 scrollbarStyle: "simple",
                 extraKeys: {
                     "Ctrl-Space": "autocomplete"
-                } //ctrl-space唤起智能提示
+                }, //ctrl-space唤起智能提示
                 //readOnly: true,        //只读
             });
-            // editor.setSize('800px', '950px'); //设置代码框的长宽
 
             editor.mode = mode;
-            // editor.on("change", function (Editor, changes) {
-            //     while (changes) {
-            //         Editor.replaceRange(changes.text.join("\n"), changes.from, changes.to);
-            //         changes = changes.next;
-            //     }
-            // });
+            
             editor.on("change", (self, changes) => {
                 var content = self.getValue();
                 contentElement.innerHTML = editorHtmlContent;
@@ -225,8 +220,7 @@
             contentElement = idocument.getElementById('ContentPlaceHolder-content-ele');
             javascriptElement = idocument.getElementById('ContentPlaceHolder-js-ele');
 
-
-            idocument.title="TODO";
+            idocument.title = "TODO";
 
             editorHtml = _createEditor("code-html", "html", html_beautify(htmlCode, {
                 indent_size: 2,

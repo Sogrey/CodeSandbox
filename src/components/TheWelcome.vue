@@ -273,27 +273,17 @@ const formatCode = () => {
 
   let formatted = file.content
 
-  try {
-    if (file.language === 'html') {
-      formatted = jsBeautify.html(formatted, {
-        indent_size: 2,
-        indent_char: ' ',
-        max_preserve_newlines: 1,
-        preserve_newlines: true,
-        keep_array_indentation: false,
-        break_chained_methods: false,
-        indent_scripts: 'normal',
-        brace_style: 'collapse',
-        space_before_conditional: true,
-        unescape_strings: false,
-        jslint_happy: false,
-        end_with_newline: false,
-        wrap_line_length: 0,
-        indent_inner_html: false,
-        comma_first: false,
-        e4x: false,
-        indent_empty_lines: false
-      })
+    try {
+      if (file.language === 'html') {
+        formatted = jsBeautify.html(formatted, {
+          indent_size: 2,
+          indent_char: ' ',
+          max_preserve_newlines: 1,
+          preserve_newlines: true,
+          indent_scripts: 'normal',
+          end_with_newline: false,
+          indent_inner_html: false
+        })
     } else if (file.language === 'css') {
       formatted = jsBeautify.css(formatted, {
         indent_size: 2,

@@ -1,0 +1,56 @@
+<template>
+  <h1>欢迎使用 Vue 3 CodeSandbox</h1>
+  <p>这是一个代码编辑预览示例</p>
+  <div id="demo"></div>
+</template>
+<script>
+  // Vue 3 示例代码
+  const { createApp } = Vue
+
+  const app = createApp({
+    data() {
+      return {
+        message: 'Hello Vue 3!',
+        count: 0,
+      }
+    },
+    methods: {
+      increment() {
+        this.count++
+      },
+    },
+    template: `<div>
+    <h2>{{ message }}</h2>
+    <p>计数器: {{ count }}</p>
+    <button @click="increment">点击增加</button>
+    </div>`,
+  })
+
+  app.mount('#demo')
+</script>
+<style>
+  body {
+    margin: 0;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+  }
+
+  #app {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  h1 {
+    color: #2c3e50;
+    text-align: center;
+  }
+
+  p {
+    line-height: 1.6;
+  }
+</style>

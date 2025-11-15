@@ -104,7 +104,7 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ 
     if (content.includes('<settings>')) {
       // 提取 head-metadata
       const headMetadataMatch = content.match(/<head-metadata>([\s\S]*?)<\/head-metadata>/)
-      headHtmlContent = headMetadataMatch ? headMetadataMatch[1]?.trim() : ''
+      headHtmlContent = headMetadataMatch ? (headMetadataMatch[1]?.trim() || '') : ''
 
       // 提取 css-links
       const cssLinksMatch = content.match(/<css-links>([\s\S]*?)<\/css-links>/)

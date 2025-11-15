@@ -1,6 +1,6 @@
 # Vue3 CodeSandbox
 
-一个基于 Vue 3 + CodeMirror 6 的在线代码编辑器，支持 HTML、CSS 和 JavaScript 的实时预览。
+一个基于 Vue 3 + CodeMirror 6 的在线代码编辑器，支持 HTML、CSS 和 JavaScript 的实时预览，具备完整的模板导入导出功能。
 
 ## ✨ 特性
 
@@ -11,6 +11,9 @@
 - 💾 **自动保存** - 自动保存代码到本地存储
 - 📱 **响应式设计** - 支持桌面和移动设备
 - 🛠️ **代码格式化** - 一键美化 HTML、CSS、JavaScript
+- 📥 **模板导出** - 导出包含完整设置的模板文件
+- 📤 **模板导入** - 导入并解析扩展模板文件
+- ⚙️ **资源设置** - HTML meta 标签、CSS 和 JS CDN 链接管理
 
 ## 🛠️ 技术栈
 
@@ -74,7 +77,9 @@ npm run lint
 │   ├── components/          # Vue 组件
 │   │   └── TheWelcome.vue   # 主编辑器组件
 │   ├── utils/              # 工具函数
-│   │   └── templateGenerator.ts
+│   │   ├── componentHelpers.ts  # 组件辅助工具函数
+│   │   ├── templateGenerator.ts # 模板生成器
+│   │   └── templateManager.ts   # 模板管理器
 │   └── main.ts             # 应用入口
 ├── public/                # 静态资源
 │   └── demo.html           # 示例文件
@@ -94,10 +99,16 @@ npm run lint
 - 代码变更即时更新预览
 - 支持完整的前端功能演示
 
+### 模板管理
+- **模板导出**：导出包含 HTML、CSS、JS 代码以及所有设置的完整模板文件
+- **模板导入**：自动解析导入的扩展模板文件，恢复代码和设置
+- **设置持久化**：支持 HTML meta 标签、CSS 和 JS CDN 链接的管理
+
 ### 工具功能
 - 一键代码格式化
 - 下载完整 HTML 文件
 - 设置面板（主题、字体大小、自动保存）
+- 资源链接管理（CSS/JS CDN）
 
 ## 🎨 主题支持
 

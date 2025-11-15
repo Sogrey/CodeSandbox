@@ -67,30 +67,59 @@
     <div v-if="showSettings" class="modal-overlay" @click="showSettings = false">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>设置</h3>
+          <h3>资源设置</h3>
           <button class="modal-close" @click="showSettings = false">&times;</button>
         </div>
         <div class="modal-body">
-          <div class="setting-item">
-            <label>编辑器主题</label>
-            <select class="setting-select">
-              <option>One Dark</option>
-              <option>Light</option>
-            </select>
+          <!-- 标签页 -->
+          <div class="setting-tabs">
+            <button v-for="tab in settingTabs" :key="tab.id" :class="{ active: currentSettingTab === tab.id }"
+              @click="currentSettingTab = tab.id" class="setting-tab">
+              {{ tab.label }}
+            </button>
           </div>
-          <div class="setting-item">
-            <label>字体大小</label>
-            <input type="number" class="setting-input" value="14" min="10" max="20">
+
+          <!-- HTML 设置 -->
+          <div v-if="currentSettingTab === 'html'" class="tab-content">
+            <div class="setting-item">
+              <label>HTML Head内容</label>
+              <textarea v-model="headHtmlContent" class="setting-textarea" placeholder="可添加meta标签、link标签等HTML head内容..."
+                rows="6">
+              </textarea>
+            </div>
           </div>
-          <div class="setting-item">
-            <label class="setting-checkbox">
-              <input type="checkbox" checked> 自动保存
-            </label>
+
+          <!-- CSS 设置 -->
+          <div v-if="currentSettingTab === 'css'" class="tab-content">
+            <div class="setting-item">
+              <label>CSS CDN链接</label>
+              <div v-for="(css, index) in cssLinks" :key="index" class="link-input-group">
+                <input v-model="cssLinks[index]" type="text" class="setting-input link-input"
+                  placeholder="例如：https://cdn.example.com/style.css">
+                <button @click="handleRemoveCssLink(index)" class="link-btn remove" title="删除">🗑</button>
+                <button @click="handleAddCssLink" v-if="index === cssLinks.length - 1" class="link-btn add"
+                  title="添加">➕</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- JS 设置 -->
+          <div v-if="currentSettingTab === 'js'" class="tab-content">
+            <div class="setting-item">
+              <label>JS CDN链接</label>
+              <div v-for="(js, index) in jsLinks" :key="index" class="link-input-group">
+                <input v-model="jsLinks[index]" type="text" class="setting-input link-input"
+                  placeholder="例如：https://cdn.example.com/script.js">
+                <button @click="handleRemoveJsLink(index)" class="link-btn remove" title="删除">🗑</button>
+                <button @click="handleAddJsLink" v-if="index === jsLinks.length - 1" class="link-btn add"
+                  title="添加">➕</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button class="modal-btn cancel" @click="showSettings = false">取消</button>
-          <button class="modal-btn confirm">确认</button>
+          <button class="modal-btn confirm" @click="handleSaveSettings">确认</button>
         </div>
       </div>
     </div>
@@ -100,7 +129,23 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import jsBeautify from 'js-beautify'
-import { buildFullHtml } from '@/utils/templateGenerator'
+import { buildFullHtml, generateExtendedTemplate } from '@/utils/templateGenerator'
+import type { TemplateVariables } from '@/utils/templateManager'
+import {
+  getCurrentFile,
+  getFileContents,
+  generateCssLinks,
+  generateJsLinks,
+  parseDemoHtml,
+  saveSettings,
+  getLanguageExtension,
+  addCssLink,
+  removeCssLink,
+  addJsLink,
+  removeJsLink,
+  downloadHtml
+} from '@/utils/componentHelpers'
+import type { FileInfo } from '@/utils/componentHelpers'
 
 // CodeMirror 动态导入
 let EditorView: any = null
@@ -131,52 +176,12 @@ const loadCodeMirror = async () => {
   }
 }
 
-// 文件配置
-interface FileConfig {
-  name: string
-  language: string
-  content: string
-}
-
-// 解析 demo.html 文件内容
-const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ html: string; css: string; js: string }> => {
-  try {
-    const response = await fetch(fileUrl)
-    const content = await response.text()
-
-    // 提取 template 部分
-    const templateMatch = content.match(/<template>([\s\S]*?)<\/template>/)
-    const htmlContent = templateMatch ? templateMatch[1]?.trim() : ''
-
-    // 提取 script 部分
-    const scriptMatch = content.match(/<script>([\s\S]*?)<\/script>/)
-    const jsContent = scriptMatch ? scriptMatch[1]?.trim() : ''
-
-    // 提取 style 部分
-    const styleMatch = content.match(/<style>([\s\S]*?)<\/style>/)
-    const cssContent = styleMatch ? styleMatch[1]?.trim() : ''
-
-    return {
-      html: htmlContent ?? "",
-      css: cssContent ?? "",
-      js: jsContent ?? ""
-    }
-  } catch (error) {
-    console.error('读取 demo.html 失败:', error)
-    return {
-      html: "",
-      css: "",
-      js: ""
-    }
-  }
-}
-
 // 文件列表
-const files = ref<FileConfig[]>([])
+const files = ref<FileInfo[]>([])
 
 // 初始化文件内容
 const initFiles = async () => {
-  const { html, css, js } = await parseDemoHtml()
+  const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks } = await parseDemoHtml()
 
   files.value = [
     {
@@ -195,6 +200,19 @@ const initFiles = async () => {
       content: js
     }
   ]
+
+  // 如果模板文件中包含设置数据，则更新组件的设置状态
+  if (parsedHeadHtml) {
+    headHtmlContent.value = parsedHeadHtml
+  }
+
+  if (parsedCssLinks.length > 0) {
+    cssLinks.value = parsedCssLinks
+  }
+
+  if (parsedJsLinks.length > 0) {
+    jsLinks.value = parsedJsLinks
+  }
 }
 
 const currentFile = ref('script.js')
@@ -205,16 +223,23 @@ const previewWidth = ref(0) // 预览区域宽度
 const showWidthInfo = ref(false) // 是否显示宽度信息
 const showSettings = ref(false) // 是否显示设置模态框
 const isButtonsCompact = ref(false) // 按钮是否处于紧凑模式
+
+// 设置相关状态
+const currentSettingTab = ref('html') // 当前设置标签页
+const settingTabs = [
+  { id: 'html', label: 'HTML' },
+  { id: 'css', label: 'CSS' },
+  { id: 'js', label: 'JS' }
+]
+const headHtmlContent = ref('') // HTML head内容
+const cssLinks = ref(['']) // CSS CDN链接数组
+const jsLinks = ref(['https://unpkg.com/vue@3/dist/vue.global.js']) // JS CDN链接数组，包含默认Vue CDN
+
 let editor: any = null
 let isResizing = false
 let startX = 0
 let startWidth = 0
 let hideTimeout: any = null // 隐藏延迟定时器
-
-// 获取当前文件配置
-const getCurrentFile = () => {
-  return files.value.find(file => file.name === currentFile.value)
-}
 
 // 切换文件
 const switchFile = (fileName: string) => {
@@ -224,7 +249,7 @@ const switchFile = (fileName: string) => {
 
 // 更新编辑器内容
 const updateEditor = () => {
-  const file = getCurrentFile()
+  const file = getCurrentFile(files.value, currentFile.value)
   if (!file || !editor) return
 
   // 确保模块已加载
@@ -237,7 +262,9 @@ const updateEditor = () => {
     doc: file.content,
     extensions: [
       basicSetup,
-      getLanguageExtension(file.language),
+      getLanguageExtension(file.language) === 'html' ? html() :
+        getLanguageExtension(file.language) === 'css' ? css() :
+          getLanguageExtension(file.language) === 'javascript' ? javascript() : null,
       codemirrorTheme,
       EditorView.updateListener.of((update: { docChanged: boolean; state: { doc: { toString: () => string } } }) => {
         if (update.docChanged) {
@@ -250,25 +277,9 @@ const updateEditor = () => {
   editor.setState(newState)
 }
 
-// 获取语言扩展
-const getLanguageExtension = (language: string) => {
-  switch (language) {
-    case 'html':
-      return html()
-    case 'css':
-      return css()
-    case 'javascript':
-      return javascript()
-    default:
-      return javascript()
-  }
-}
-
-
-
 // 格式化代码
 const formatCode = () => {
-  const file = getCurrentFile()
+  const file = getCurrentFile(files.value, currentFile.value)
   if (!file) return
 
   let formatted = file.content
@@ -308,45 +319,89 @@ const formatCode = () => {
   }
 }
 
-// 获取文件内容
-const getFileContents = () => {
-  const htmlFile = files.value.find(f => f.name === 'index.html')
-  const cssFile = files.value.find(f => f.name === 'style.css')
-  const jsFile = files.value.find(f => f.name === 'script.js')
-
-  return {
-    htmlContent: htmlFile?.content || '',
-    cssContent: cssFile?.content || '',
-    jsContent: jsFile?.content || ''
-  }
-}
-
 // 运行代码
-const runCode = () => {
+const runCode = async () => {
   if (!previewFrame.value) return
 
-  const { htmlContent, cssContent, jsContent } = getFileContents()
-  const fullHtml = buildFullHtml({ htmlContent, cssContent, jsContent }, true)
+  const { htmlContent, cssContent, jsContent } = getFileContents(files.value)
+
+  // 构建模板变量，包含设置内容
+  const templateVariables: TemplateVariables = {
+    htmlContent,
+    cssContent,
+    jsContent,
+    headHtmlContent: headHtmlContent.value,
+    cssLinks: generateCssLinks(cssLinks.value),
+    jsLinks: generateJsLinks(jsLinks.value)
+  }
+
+  const fullHtml = await buildFullHtml(templateVariables, true)
 
   // 使用 srcdoc 属性安全地设置 iframe 内容
   previewFrame.value.srcdoc = fullHtml
 }
 
-// 下载完整HTML代码
-const downloadFullHtml = () => {
-  const { htmlContent, cssContent, jsContent } = getFileContents()
-  const fullHtml = buildFullHtml({ htmlContent, cssContent, jsContent }, false)
+// 设置相关方法
 
-  // 创建下载链接
-  const blob = new Blob([fullHtml], { type: 'text/html' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'code-sandbox.html'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+// 添加CSS链接输入框
+const handleAddCssLink = () => {
+  addCssLink(cssLinks.value)
+}
+
+// 删除CSS链接输入框
+const handleRemoveCssLink = (index: number) => {
+  removeCssLink(cssLinks.value, index)
+}
+
+// 添加JS链接输入框
+const handleAddJsLink = () => {
+  addJsLink(jsLinks.value)
+}
+
+// 删除JS链接输入框
+const handleRemoveJsLink = (index: number) => {
+  removeJsLink(jsLinks.value, index)
+}
+
+// 保存设置
+const handleSaveSettings = () => {
+  // 调用工具函数保存设置
+  saveSettings(headHtmlContent.value, cssLinks.value, jsLinks.value)
+
+  // 关闭设置面板
+  showSettings.value = false
+}
+
+// 下载完整HTML代码
+const downloadFullHtml = async () => {
+  const { htmlContent, cssContent, jsContent } = getFileContents(files.value)
+
+  // 构建模板变量，包含设置内容
+  const templateVariables: TemplateVariables = {
+    htmlContent,
+    cssContent,
+    jsContent,
+    headHtmlContent: headHtmlContent.value ?? '',
+    cssLinks: generateCssLinks(cssLinks.value),
+    jsLinks: generateJsLinks(jsLinks.value)
+  }
+
+  const fullHtml = await buildFullHtml(templateVariables, false)
+
+  // 下载完整HTML文件
+  downloadHtml(fullHtml, 'code-sandbox-full.html')
+
+  // 下载扩展的HTML模板文件（包含所有编辑和设置数据）
+  const templateHtml = generateExtendedTemplate(
+    htmlContent,
+    cssContent,
+    jsContent,
+    headHtmlContent.value,
+    cssLinks.value,
+    jsLinks.value
+  )
+
+  downloadHtml(templateHtml, 'code-sandbox-template.html')
 }
 
 // 初始化编辑器
@@ -359,7 +414,7 @@ onMounted(async () => {
 
   if (!editorContainer.value) return
 
-  const file = getCurrentFile()
+  const file = getCurrentFile(files.value, currentFile.value)
   if (!file) return
 
   // 确保所有需要的模块都已加载
@@ -373,7 +428,9 @@ onMounted(async () => {
       doc: file.content,
       extensions: [
         basicSetup,
-        getLanguageExtension(file.language),
+        getLanguageExtension(file.language) === 'html' ? html() :
+          getLanguageExtension(file.language) === 'css' ? css() :
+            getLanguageExtension(file.language) === 'javascript' ? javascript() : null,
         codemirrorTheme,
         EditorView.updateListener.of((update: { docChanged: boolean; state: { doc: { toString: () => string } } }) => {
           if (update.docChanged) {
@@ -1017,6 +1074,127 @@ onUnmounted(() => {
   }
 }
 
+// 设置标签页样式
+.setting-tabs {
+  display: flex;
+  border-bottom: 1px solid #3e3e42;
+  margin-bottom: 20px;
+
+  .setting-tab {
+    background: transparent;
+    border: none;
+    color: #cccccc;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+
+    &:hover {
+      color: #ffffff;
+      background: #2d2d2d;
+    }
+
+    &.active {
+      color: #007acc;
+      border-bottom-color: #007acc;
+      background: #1e1e1e;
+    }
+  }
+}
+
+// 标签页内容
+.tab-content {
+  min-height: 200px;
+}
+
+// 设置文本区域
+.setting-textarea {
+  width: 100%;
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  color: #ffffff;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Monaco', 'Courier New', monospace;
+  resize: vertical;
+  min-height: 120px;
+
+  &:focus {
+    outline: none;
+    border-color: #007acc;
+  }
+
+  &::placeholder {
+    color: #666666;
+  }
+}
+
+// 链接输入组
+.link-input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+
+  .link-input {
+    flex: 1;
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+
+    &:focus {
+      outline: none;
+      border-color: #007acc;
+    }
+
+    &::placeholder {
+      color: #666666;
+    }
+  }
+
+  .link-btn {
+    background: #424242;
+    border: none;
+    color: #ffffff;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background: #4a4a4a;
+    }
+
+    &.remove {
+      background: #d32f2f;
+
+      &:hover {
+        background: #f44336;
+      }
+    }
+
+    &.add {
+      background: #388e3c;
+
+      &:hover {
+        background: #4caf50;
+      }
+    }
+  }
+}
+
 // 响应式模态框
 @media (max-width: 768px) {
   .modal-content {
@@ -1026,6 +1204,26 @@ onUnmounted(() => {
 
   .modal-footer {
     flex-direction: column;
+  }
+
+  .setting-tabs {
+    .setting-tab {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+  }
+
+  .link-input-group {
+    flex-direction: column;
+    gap: 4px;
+
+    .link-input {
+      width: 100%;
+    }
+
+    .link-btn {
+      width: 100%;
+    }
   }
 }
 </style>

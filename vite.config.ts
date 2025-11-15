@@ -16,4 +16,20 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  // GitHub Pages 部署配置
+  base: '/CodeSandbox/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['vue', 'vue-router'],
+          codemirror: ['codemirror', '@codemirror/lang-javascript', '@codemirror/lang-html', '@codemirror/lang-css']
+        }
+      }
+    }
+  }
 })

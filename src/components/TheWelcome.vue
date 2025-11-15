@@ -139,7 +139,7 @@ interface FileConfig {
 }
 
 // 解析 demo.html 文件内容
-const parseDemoHtml = async (fileUrl: string = '/demo.html'): Promise<{ html: string; css: string; js: string }> => {
+const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ html: string; css: string; js: string }> => {
   try {
     const response = await fetch(fileUrl)
     const content = await response.text()
@@ -273,17 +273,17 @@ const formatCode = () => {
 
   let formatted = file.content
 
-    try {
-      if (file.language === 'html') {
-        formatted = jsBeautify.html(formatted, {
-          indent_size: 2,
-          indent_char: ' ',
-          max_preserve_newlines: 1,
-          preserve_newlines: true,
-          indent_scripts: 'normal',
-          end_with_newline: false,
-          indent_inner_html: false
-        })
+  try {
+    if (file.language === 'html') {
+      formatted = jsBeautify.html(formatted, {
+        indent_size: 2,
+        indent_char: ' ',
+        max_preserve_newlines: 1,
+        preserve_newlines: true,
+        indent_scripts: 'normal',
+        end_with_newline: false,
+        indent_inner_html: false
+      })
     } else if (file.language === 'css') {
       formatted = jsBeautify.css(formatted, {
         indent_size: 2,

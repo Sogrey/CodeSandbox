@@ -20,11 +20,13 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20'
-        cache: 'pnpm'
-        cache-dependency-path: 'pnpm-lock.yaml'
 
-    - name: Enable Corepack
-      run: corepack enable
+    - name: Install pnpm
+      run: |
+        npm install -g pnpm@8
+        echo "🔧 检查 pnpm 是否安装成功："
+        pnpm --version
+        echo "✅ pnpm 安装成功，版本号如上所示"
 
     - name: Install dependencies
       run: pnpm install --frozen-lockfile

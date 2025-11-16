@@ -208,26 +208,33 @@ public/
 - **问题**：CodeMirror 包体积过大（500KB+警告）
 - **解决方案**：精细化分包策略，将CodeMirror拆分为多个独立chunk
 - **效果**：
-  - 最大包体积从327KB减少到189KB
+  - 最大包体积从327KB减少到322KB
   - 消除所有500KB+警告
   - 支持按需加载，提高首屏加载速度
 
+#### 4. 循环依赖修复
+- **问题**：精细化分包导致模块循环依赖，出现`Cannot access 'l' before initialization`错误
+- **解决方案**：简化分包策略，合并相关性强的模块
+- **效果**：
+  - 消除循环依赖错误
+  - 包大小合理平衡（322KB vs 原始500KB+）
+  - 确保模块正确初始化顺序
+
 ### 分包策略详情
 
-| 分包名称 | 包含模块 | 作用 |
-|---------|---------|------|
-| `codemirror-core` | CodeMirror 核心库 | 提供基础编辑器功能 |
-| `codemirror-js/html/css` | 语言包 | 支持不同语言的语法高亮 |
-| `codemirror-state/view` | 基础包 | 提供状态管理和视图功能 |
-| `codemirror-language/commands` | 扩展包 | 提供语言支持和命令功能 |
-| `codemirror-utils` | 工具包 | 其他辅助功能模块 |
+| 分包名称 | 包含模块 | 大小 | 作用 |
+|---------|---------|------|------|
+| `codemirror-base` | state/view/language/commands | 322.97 kB | 基础功能包 |
+| `codemirror-langs` | js/html/css | 164.43 kB | 语言支持包 |
+| `codemirror-core` | CodeMirror 核心库 | 66.53 kB | 核心编辑器包 |
+| `vendor` | Vue等第三方库 | 85.36 kB | 第三方依赖包 |
 
 ### 技术实现要点
 
 1. **CSS动画优化**：拖拽时 `element.style.transition = 'none'`
 2. **DOM缓存**：减少重复查询DOM元素
 3. **节流机制**：避免频繁的样式更新
-4. **Rollup手动分包**：精细化控制chunk拆分
+4. **Rollup分包策略**：平衡包大小与模块依赖关系
 
 ## 🚀 优化总结
 
@@ -247,26 +254,33 @@ public/
 - **问题**：CodeMirror 包体积过大（500KB+警告）
 - **解决方案**：精细化分包策略，将CodeMirror拆分为多个独立chunk
 - **效果**：
-  - 最大包体积从327KB减少到189KB
+  - 最大包体积从327KB减少到322KB
   - 消除所有500KB+警告
   - 支持按需加载，提高首屏加载速度
 
+#### 4. 循环依赖修复
+- **问题**：精细化分包导致模块循环依赖，出现`Cannot access 'l' before initialization`错误
+- **解决方案**：简化分包策略，合并相关性强的模块
+- **效果**：
+  - 消除循环依赖错误
+  - 包大小合理平衡（322KB vs 原始500KB+）
+  - 确保模块正确初始化顺序
+
 ### 分包策略详情
 
-| 分包名称 | 包含模块 | 作用 |
-|---------|---------|------|
-| `codemirror-core` | CodeMirror 核心库 | 提供基础编辑器功能 |
-| `codemirror-js/html/css` | 语言包 | 支持不同语言的语法高亮 |
-| `codemirror-state/view` | 基础包 | 提供状态管理和视图功能 |
-| `codemirror-language/commands` | 扩展包 | 提供语言支持和命令功能 |
-| `codemirror-utils` | 工具包 | 其他辅助功能模块 |
+| 分包名称 | 包含模块 | 大小 | 作用 |
+|---------|---------|------|------|
+| `codemirror-base` | state/view/language/commands | 322.97 kB | 基础功能包 |
+| `codemirror-langs` | js/html/css | 164.43 kB | 语言支持包 |
+| `codemirror-core` | CodeMirror 核心库 | 66.53 kB | 核心编辑器包 |
+| `vendor` | Vue等第三方库 | 85.36 kB | 第三方依赖包 |
 
 ### 技术实现要点
 
 1. **CSS动画优化**：拖拽时 `element.style.transition = 'none'`
 2. **DOM缓存**：减少重复查询DOM元素
 3. **节流机制**：避免频繁的样式更新
-4. **Rollup手动分包**：精细化控制chunk拆分
+4. **Rollup分包策略**：平衡包大小与模块依赖关系
 
 ## 📄 许可证
 

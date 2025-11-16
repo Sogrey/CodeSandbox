@@ -27,45 +27,26 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
+          // 简化分包策略，避免循环依赖问题
+          
+          // 将codemirror基础包合并为一个包，确保依赖关系正确
+          if (id.includes('node_modules/@codemirror/state') ||
+              id.includes('node_modules/@codemirror/view') ||
+              id.includes('node_modules/@codemirror/language') ||
+              id.includes('node_modules/@codemirror/commands')) {
+            return 'codemirror-base'
+          }
+          
+          // 将codemirror语言包合并为一个包
+          if (id.includes('node_modules/@codemirror/lang-javascript') ||
+              id.includes('node_modules/@codemirror/lang-html') ||
+              id.includes('node_modules/@codemirror/lang-css')) {
+            return 'codemirror-langs'
+          }
+          
           // 将codemirror核心包单独分包
-          if (id.includes('node_modules/codemirror/dist')) {
+          if (id.includes('node_modules/codemirror')) {
             return 'codemirror-core'
-          }
-          
-          // 将codemirror语言包分包
-          if (id.includes('node_modules/@codemirror/lang-javascript')) {
-            return 'codemirror-js'
-          }
-          
-          if (id.includes('node_modules/@codemirror/lang-html')) {
-            return 'codemirror-html'
-          }
-          
-          if (id.includes('node_modules/@codemirror/lang-css')) {
-            return 'codemirror-css'
-          }
-          
-          // 将codemirror基础包进一步细分
-          if (id.includes('node_modules/@codemirror/state')) {
-            return 'codemirror-state'
-          }
-          
-          if (id.includes('node_modules/@codemirror/view')) {
-            return 'codemirror-view'
-          }
-          
-          if (id.includes('node_modules/@codemirror/language')) {
-            return 'codemirror-language'
-          }
-          
-          if (id.includes('node_modules/@codemirror/commands')) {
-            return 'codemirror-commands'
-          }
-          
-          // 将其他codemirror包分包
-          if (id.includes('node_modules/@codemirror') && 
-              !id.includes('node_modules/@codemirror/lang')) {
-            return 'codemirror-utils'
           }
           
           // 将其他大型库单独分包

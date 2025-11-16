@@ -357,9 +357,9 @@ const initFiles = async () => {
   }
 }
 
-const currentFile = ref('script.js')
-const editorContainer = ref<HTMLElement>()
-const previewFrame = ref<HTMLIFrameElement>()
+const currentFile = ref('script.js') // 当前编辑的文件名
+const editorContainer = ref<HTMLElement>() // 编辑器容器引用
+const previewFrame = ref<HTMLIFrameElement>() // 预览iframe引用
 const editorWidth = ref(650) // 默认编辑器宽度
 const previewWidth = ref(0) // 预览区域宽度
 const showWidthInfo = ref(false) // 是否显示宽度信息

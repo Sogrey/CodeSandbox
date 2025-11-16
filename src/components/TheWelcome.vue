@@ -4,7 +4,8 @@
       <!-- 编辑器和预览区 -->
       <div class="editor-preview-container">
         <!-- 编辑器区域 -->
-        <div class="editor-panel" :style="{ width: isPreviewMode ? '0px' : editorWidth + 'px' }" :class="{ 'preview-mode': isPreviewMode }">
+        <div class="editor-panel" :style="{ width: isPreviewMode ? '0px' : editorWidth + 'px' }"
+          :class="{ 'preview-mode': isPreviewMode }">
           <!-- 编辑器工具栏 -->
           <div class="editor-toolbar">
             <div class="editor-tabs">
@@ -70,10 +71,12 @@
         </div>
 
         <!-- 分割线 -->
-        <div class="resize-handle" :class="{ 'preview-mode': isPreviewMode }" @mousedown="startResize" @touchstart="startResize"></div>
+        <div class="resize-handle" :class="{ 'preview-mode': isPreviewMode }" @mousedown="startResize"
+          @touchstart="startResize"></div>
 
         <!-- 预览区域 -->
-        <div class="preview-panel" :style="{ width: isPreviewMode ? '100%' : 'calc(100% - ' + (editorWidth + 3) + 'px)' }">
+        <div class="preview-panel"
+          :style="{ width: isPreviewMode ? '100%' : 'calc(100% - ' + (editorWidth + 3) + 'px)' }">
           <div class="preview-header">
             <span>{{ pageTitle }}: {{ pageDescription }}</span>
           </div>
@@ -82,7 +85,7 @@
           <!-- 编辑/预览模式切换按钮 -->
           <button class="preview-mode-toggle" @click="togglePreviewMode" :title="isPreviewMode ? '切换到编辑模式' : '切换到预览模式'">
             <span class="toggle-text">
-              {{ isPreviewMode ? '编辑模式⇦' : '⇨预览模式' }}
+              {{ isPreviewMode ? '编辑模式 ⇨' : '⇦ 预览模式' }}
             </span>
           </button>
 
@@ -231,15 +234,15 @@ const files = ref<FileInfo[]>([])
 const initFiles = async () => {
   // 检查URL参数类型
   const paramType = checkUrlParams()
-  
+
   if (paramType === 'code') {
     // 处理code参数：从URL参数中加载代码内容
     const urlCodeData = parseUrlCode()
-    
+
     if (urlCodeData) {
       // 使用URL参数中的代码内容 - 完全基于URL参数，不加载其他模板数据
       const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = urlCodeData
-      
+
       files.value = [
         {
           name: 'index.html',
@@ -262,21 +265,21 @@ const initFiles = async () => {
       headHtmlContent.value = parsedHeadHtml || ''
       cssLinks.value = parsedCssLinks.length > 0 ? parsedCssLinks : ['']
       jsLinks.value = parsedJsLinks.length > 0 ? parsedJsLinks : ['']
-      
+
       // 更新标题和描述
       pageTitle.value = parsedTitle || 'CodeSandbox Preview'
       pageDescription.value = parsedDescription || 'A code sandbox preview page'
-      
+
       console.log('从URL参数加载代码内容成功，跳过默认模板加载')
       return
     }
   } else if (paramType === 'page') {
     // 处理page参数：从指定的模板数据页URL加载内容
     const pageData = await parseUrlPage()
-    
+
     if (pageData) {
       const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = pageData
-      
+
       files.value = [
         {
           name: 'index.html',
@@ -299,16 +302,16 @@ const initFiles = async () => {
       headHtmlContent.value = parsedHeadHtml || ''
       cssLinks.value = parsedCssLinks.length > 0 ? parsedCssLinks : ['']
       jsLinks.value = parsedJsLinks.length > 0 ? parsedJsLinks : ['']
-      
+
       // 更新标题和描述
       pageTitle.value = parsedTitle || 'CodeSandbox Preview'
       pageDescription.value = parsedDescription || 'A code sandbox preview page'
-      
+
       console.log('从指定模板数据页加载代码内容成功')
       return
     }
   }
-  
+
   // 如果没有URL参数或参数解析失败，则从demo.html文件加载默认内容
   console.log('未检测到有效URL参数，加载默认模板内容')
   const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = await parseDemoHtml()
@@ -629,7 +632,7 @@ const handleRemoveJsLink = (index: number) => {
 // 切换编辑/预览模式
 const togglePreviewMode = () => {
   isPreviewMode.value = !isPreviewMode.value
-  
+
   // 如果切换到预览模式，立即运行一次代码确保预览最新内容
   if (isPreviewMode.value) {
     setTimeout(runCode, 100)
@@ -1039,7 +1042,8 @@ onUnmounted(() => {
   transition: all 0.3s ease; // 添加平滑过渡动画
 
   &.preview-mode {
-    opacity: 0; // 预览模式下完全透明
+    width: 0px; // 预览模式下宽度设为0
+    opacity: 0; // 完全透明
     pointer-events: none; // 禁止交互
   }
 
@@ -1053,6 +1057,10 @@ onUnmounted(() => {
     height: 100%;
     background: transparent;
     cursor: col-resize;
+    
+    .preview-mode & {
+      display: none; // 预览模式下隐藏可点击区域
+    }
   }
 
   &:hover {
@@ -1111,7 +1119,7 @@ onUnmounted(() => {
   // 编辑/预览模式切换按钮
   .preview-mode-toggle {
     position: absolute;
-    left: -16px; // 紧贴左侧边框
+    left: 0px; // 紧贴左侧边框
     bottom: 16px; // 距底部16px
     background: rgba(0, 0, 0, 0.4); // 背景色rgba(0,0,0,0.4)
     border: none;
@@ -1120,11 +1128,11 @@ onUnmounted(() => {
     cursor: pointer;
     font-size: 12px;
     font-weight: 500;
-    border-radius: 0 50% 50% 0; // 左上左下直角，右上右下圆角
+    border-radius: 0 15px 15px 0; // 左上左下直角，右上右下圆角
     z-index: 10;
     transition: all 0.3s ease;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    
+
     &:hover {
       background: rgba(0, 0, 0, 0.6);
       transform: translateX(-2px);
@@ -1140,6 +1148,7 @@ onUnmounted(() => {
       align-items: center;
       gap: 4px;
       white-space: nowrap;
+      margin-top: 2px;
     }
   }
 }

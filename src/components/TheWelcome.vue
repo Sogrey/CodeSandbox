@@ -27,6 +27,10 @@
                   <span class="btn-icon">📥</span>
                   <span class="btn-text">下载</span>
                 </button>
+                <button @click="handleShowShare" class="action-btn" title="分享链接">
+                  <span class="btn-icon">🔗</span>
+                  <span class="btn-text">分享</span>
+                </button>
               </div>
               <button @click="showSettings = true" class="action-btn settings-btn"
                 :class="{ compact: isButtonsCompact }" title="设置选项">
@@ -34,6 +38,26 @@
                 <span class="btn-text">设置</span>
               </button>
             </div>
+          </div>
+
+          <!-- 分享气泡浮窗 -->
+          <div v-if="showSharePopup" class="share-popup-container">
+            <div class="share-popup" @click.stop>
+              <div class="share-header">
+                <span>分享链接</span>
+                <button class="share-close" @click="showSharePopup = false">&times;</button>
+              </div>
+              <div class="share-body">
+                <div class="url-input-group">
+                  <input ref="shareUrlInput" v-model="shareUrl" type="text" readonly class="url-input" />
+                  <button @click="copyShareUrl" class="copy-btn" title="复制链接">
+                    <span class="copy-icon">📋</span>
+                    <span class="copy-text">复制</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="share-overlay" @click="showSharePopup = false"></div>
           </div>
 
           <!-- 代码编辑器 -->
@@ -151,6 +175,9 @@ import {
   generateCssLinks,
   generateJsLinks,
   parseDemoHtml,
+  parseUrlCode,
+  parseUrlPage,
+  checkUrlParams,
   saveSettings,
   getLanguageExtension,
   addCssLink,
@@ -195,6 +222,88 @@ const files = ref<FileInfo[]>([])
 
 // 初始化文件内容
 const initFiles = async () => {
+  // 检查URL参数类型
+  const paramType = checkUrlParams()
+  
+  if (paramType === 'code') {
+    // 处理code参数：从URL参数中加载代码内容
+    const urlCodeData = parseUrlCode()
+    
+    if (urlCodeData) {
+      // 使用URL参数中的代码内容 - 完全基于URL参数，不加载其他模板数据
+      const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = urlCodeData
+      
+      files.value = [
+        {
+          name: 'index.html',
+          language: 'html',
+          content: html || '<div>请编写你的HTML代码</div>'
+        },
+        {
+          name: 'style.css',
+          language: 'css',
+          content: css || '/* 请编写你的CSS样式 */'
+        },
+        {
+          name: 'script.js',
+          language: 'javascript',
+          content: js || '// 请编写你的JavaScript代码'
+        }
+      ]
+
+      // 更新设置状态 - 仅使用URL参数中的设置数据
+      headHtmlContent.value = parsedHeadHtml || ''
+      cssLinks.value = parsedCssLinks.length > 0 ? parsedCssLinks : ['']
+      jsLinks.value = parsedJsLinks.length > 0 ? parsedJsLinks : ['']
+      
+      // 更新标题和描述
+      pageTitle.value = parsedTitle || 'CodeSandbox Preview'
+      pageDescription.value = parsedDescription || 'A code sandbox preview page'
+      
+      console.log('从URL参数加载代码内容成功，跳过默认模板加载')
+      return
+    }
+  } else if (paramType === 'page') {
+    // 处理page参数：从指定的模板数据页URL加载内容
+    const pageData = await parseUrlPage()
+    
+    if (pageData) {
+      const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = pageData
+      
+      files.value = [
+        {
+          name: 'index.html',
+          language: 'html',
+          content: html || '<div>请编写你的HTML代码</div>'
+        },
+        {
+          name: 'style.css',
+          language: 'css',
+          content: css || '/* 请编写你的CSS样式 */'
+        },
+        {
+          name: 'script.js',
+          language: 'javascript',
+          content: js || '// 请编写你的JavaScript代码'
+        }
+      ]
+
+      // 更新设置状态
+      headHtmlContent.value = parsedHeadHtml || ''
+      cssLinks.value = parsedCssLinks.length > 0 ? parsedCssLinks : ['']
+      jsLinks.value = parsedJsLinks.length > 0 ? parsedJsLinks : ['']
+      
+      // 更新标题和描述
+      pageTitle.value = parsedTitle || 'CodeSandbox Preview'
+      pageDescription.value = parsedDescription || 'A code sandbox preview page'
+      
+      console.log('从指定模板数据页加载代码内容成功')
+      return
+    }
+  }
+  
+  // 如果没有URL参数或参数解析失败，则从demo.html文件加载默认内容
+  console.log('未检测到有效URL参数，加载默认模板内容')
   const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = await parseDemoHtml()
 
   files.value = [
@@ -241,11 +350,17 @@ const initFiles = async () => {
 const currentFile = ref('script.js')
 const editorContainer = ref<HTMLElement>()
 const previewFrame = ref<HTMLIFrameElement>()
-const editorWidth = ref(600) // 默认编辑器宽度
+const editorWidth = ref(650) // 默认编辑器宽度
 const previewWidth = ref(0) // 预览区域宽度
 const showWidthInfo = ref(false) // 是否显示宽度信息
 const showSettings = ref(false) // 是否显示设置模态框
 const isButtonsCompact = ref(false) // 按钮是否处于紧凑模式
+
+// 分享功能相关状态
+const showSharePopup = ref(false) // 是否显示分享气泡浮窗
+const shareUrlInput = ref<HTMLInputElement>() // 分享链接输入框引用
+const currentUrl = ref('') // 当前页面URL（不带参数）
+const shareUrl = ref('') // 生成的分享链接
 
 // 设置相关状态
 const currentSettingTab = ref('html') // 当前设置标签页
@@ -253,7 +368,7 @@ const settingTabs = [
   { id: 'html', label: 'HTML' },
   { id: 'css', label: 'CSS' },
   { id: 'js', label: 'JS' },
-  { id: 'other', label: '其他' }
+  { id: 'page', label: '页面信息' }
 ]
 const headHtmlContent = ref('') // HTML head内容
 const cssLinks = ref(['']) // CSS CDN链接数组
@@ -307,44 +422,46 @@ const updateEditor = () => {
 
 // 格式化代码
 const formatCode = () => {
-  const file = getCurrentFile(files.value, currentFile.value)
-  if (!file) return
+  // 格式化所有文件
+  files.value.forEach(file => {
+    let formatted = file.content
 
-  let formatted = file.content
+    try {
+      if (file.language === 'html') {
+        formatted = jsBeautify.html(formatted, {
+          indent_size: 2,
+          indent_char: ' ',
+          max_preserve_newlines: 1,
+          preserve_newlines: true,
+          indent_scripts: 'normal',
+          end_with_newline: false,
+          indent_inner_html: false
+        })
+      } else if (file.language === 'css') {
+        formatted = jsBeautify.css(formatted, {
+          indent_size: 2,
+          indent_char: ' ',
+          selector_separator_newline: true,
+          newline_between_rules: true,
+          preserve_newlines: true
+        })
+      } else if (file.language === 'javascript') {
+        formatted = jsBeautify.js(formatted, {
+          indent_size: 2,
+          indent_char: ' ',
+          preserve_newlines: true,
+          brace_style: 'collapse'
+        })
+      }
 
-  try {
-    if (file.language === 'html') {
-      formatted = jsBeautify.html(formatted, {
-        indent_size: 2,
-        indent_char: ' ',
-        max_preserve_newlines: 1,
-        preserve_newlines: true,
-        indent_scripts: 'normal',
-        end_with_newline: false,
-        indent_inner_html: false
-      })
-    } else if (file.language === 'css') {
-      formatted = jsBeautify.css(formatted, {
-        indent_size: 2,
-        indent_char: ' ',
-        selector_separator_newline: true,
-        newline_between_rules: true,
-        preserve_newlines: true
-      })
-    } else if (file.language === 'javascript') {
-      formatted = jsBeautify.js(formatted, {
-        indent_size: 2,
-        indent_char: ' ',
-        preserve_newlines: true,
-        brace_style: 'collapse'
-      })
+      file.content = formatted
+    } catch (error) {
+      console.error(`格式化 ${file.name} 失败:`, error)
     }
+  })
 
-    file.content = formatted
-    updateEditor()
-  } catch (error) {
-    console.error('格式化失败:', error)
-  }
+  // 更新当前编辑器显示
+  updateEditor()
 }
 
 // 运行代码
@@ -410,6 +527,71 @@ const downloadFullHtml = async () => {
   )
 
   downloadHtml(templateHtml, 'code-sandbox-template.html')
+}
+
+// 显示分享弹窗
+const handleShowShare = () => {
+  generateShareUrl()
+  showSharePopup.value = true
+}
+
+// 生成分享链接
+const generateShareUrl = () => {
+  // 获取当前URL并去除参数
+  const url = new URL(window.location.href)
+  url.search = '' // 清空所有参数
+  currentUrl.value = url.toString()
+
+  // 获取当前编辑内容
+  const { htmlContent, cssContent, jsContent } = getFileContents(files.value)
+
+  // 生成扩展的HTML模板内容
+  const templateContent = generateExtendedTemplate(
+    htmlContent,
+    cssContent,
+    jsContent,
+    headHtmlContent.value,
+    cssLinks.value,
+    jsLinks.value,
+    pageTitle.value,
+    pageDescription.value
+  )
+
+  // 对内容进行Base64编码（加密编码）
+  const encodedContent = btoa(encodeURIComponent(templateContent))
+
+  // 生成带参数的分享链接
+  shareUrl.value = `${currentUrl.value}?code=${encodedContent}`
+}
+
+// 复制分享链接
+const copyShareUrl = async () => {
+  if (!shareUrlInput.value) return
+
+  try {
+    // 选中输入框中的文本
+    shareUrlInput.value.select()
+    shareUrlInput.value.setSelectionRange(0, 99999) // 对于移动设备
+
+    // 使用 Clipboard API 复制文本
+    await navigator.clipboard.writeText(shareUrl.value)
+
+    // 关闭气泡浮窗
+    showSharePopup.value = false
+
+    // 可以添加一个简单的提示信息（可选）
+    console.log('分享链接已复制到剪贴板')
+  } catch (error) {
+    console.error('复制失败:', error)
+    // 备用方案：使用 document.execCommand
+    try {
+      document.execCommand('copy')
+      showSharePopup.value = false
+      console.log('分享链接已复制到剪贴板')
+    } catch (fallbackError) {
+      console.error('备用复制方法也失败:', fallbackError)
+    }
+  }
 }
 
 // 设置相关方法
@@ -528,7 +710,7 @@ const handleResize = (e: MouseEvent | TouchEvent) => {
 
   // 计算新的编辑器宽度，限制在合理范围内
   const containerWidth = document.querySelector('.editor-preview-container')?.clientWidth || 1200
-  const minWidth = 450 // 左侧最小宽度
+  const minWidth = 500 // 左侧最小宽度
   const maxWidth = containerWidth - 50 - 3 // 右侧保留50px宽度（减去分割线宽度）
   const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX))
   editorWidth.value = newWidth
@@ -551,7 +733,7 @@ const handleResize = (e: MouseEvent | TouchEvent) => {
 // 更新按钮显示模式
 const updateButtonsMode = (width: number) => {
   // 当编辑器宽度小于600px时，切换到紧凑模式（只显示图标）
-  const shouldBeCompact = width < 550
+  const shouldBeCompact = width < 650
 
   if (isButtonsCompact.value !== shouldBeCompact) {
     isButtonsCompact.value = shouldBeCompact
@@ -803,6 +985,12 @@ onUnmounted(() => {
           .btn-icon {
             margin-right: 0;
           }
+        }
+      }
+
+      button {
+        span {
+          margin-top: 2px;
         }
       }
     }
@@ -1253,6 +1441,147 @@ onUnmounted(() => {
 
     .link-btn {
       width: 100%;
+    }
+  }
+}
+
+// 分享气泡浮窗样式
+.share-popup-container {
+  position: absolute;
+  top: 60px;
+  right: 16px;
+  z-index: 2000;
+}
+
+.share-popup {
+  background: #252526;
+  border: 1px solid #3e3e42;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  width: 400px;
+  max-width: 90vw;
+  position: relative;
+  z-index: 2001;
+}
+
+.share-header {
+  background: #2d2d2d;
+  padding: 12px 16px;
+  border-bottom: 1px solid #3e3e42;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 8px 8px 0 0;
+
+  span {
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .share-close {
+    background: none;
+    border: none;
+    color: #cccccc;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    line-height: 1;
+
+    &:hover {
+      background: #3e3e42;
+      color: #ffffff;
+    }
+  }
+}
+
+.share-body {
+  padding: 16px;
+}
+
+.url-input-group {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+
+  .url-input {
+    flex: 1;
+    background: #1e1e1e;
+    border: 1px solid #3e3e42;
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: 'Monaco', 'Courier New', monospace;
+
+    &:focus {
+      outline: none;
+      border-color: #007acc;
+    }
+
+    &::placeholder {
+      color: #666666;
+    }
+  }
+
+  .copy-btn {
+    background: #007acc;
+    border: none;
+    color: #ffffff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background: #118bee;
+    }
+
+    .copy-icon {
+      font-size: 14px;
+    }
+
+    .copy-text {
+      white-space: nowrap;
+    }
+  }
+}
+
+.share-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: 2000;
+}
+
+// 响应式分享气泡浮窗
+@media (max-width: 768px) {
+  .share-popup-container {
+    top: 50px;
+    right: 8px;
+    left: 8px;
+    width: calc(100% - 16px);
+  }
+
+  .share-popup {
+    width: 100%;
+  }
+
+  .url-input-group {
+    flex-direction: column;
+
+    .copy-btn {
+      width: 100%;
+      justify-content: center;
     }
   }
 }

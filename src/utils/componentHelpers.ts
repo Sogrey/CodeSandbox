@@ -76,6 +76,131 @@ export const generateJsLinks = (jsLinks: string[]): string => {
 // 解析相关工具函数
 
 /**
+ * 检查URL参数类型
+ * 返回参数类型：'code' | 'page' | null
+ */
+export const checkUrlParams = (): 'code' | 'page' | null => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const codeParam = urlParams.get('code')
+  const pageParam = urlParams.get('page')
+  
+  // 优先检查code参数
+  if (codeParam) return 'code'
+  // 其次检查page参数
+  if (pageParam) return 'page'
+  
+  return null
+}
+
+/**
+ * 从URL参数解析代码内容
+ */
+export const parseUrlCode = (): { 
+  html: string; 
+  css: string; 
+  js: string; 
+  headHtmlContent: string; 
+  cssLinks: string[]; 
+  jsLinks: string[];
+  title: string;
+  description: string 
+} | null => {
+  try {
+    const urlParams = new URLSearchParams(window.location.search)
+    const codeParam = urlParams.get('code')
+    
+    if (!codeParam) return null
+    
+    // 解码Base64并转换为原始内容
+    const decodedContent = decodeURIComponent(atob(codeParam))
+    
+    // 解析模板内容
+    const templateMatch = decodedContent.match(/<template>([\s\S]*?)<\/template>/)
+    const htmlContent = templateMatch ? templateMatch[1]?.trim() : ''
+
+    // 提取 script 部分
+    const scriptMatch = decodedContent.match(/<script>([\s\S]*?)<\/script>/)
+    const jsContent = scriptMatch ? scriptMatch[1]?.trim() : ''
+
+    // 提取 style 部分
+    const styleMatch = decodedContent.match(/<style>([\s\S]*?)<\/style>/)
+    const cssContent = styleMatch ? styleMatch[1]?.trim() : ''
+
+    // 提取标题和描述
+    const titleMatch = decodedContent.match(/<title>([\s\S]*?)<\/title>/)
+    const title = titleMatch ? (titleMatch[1]?.trim() || 'CodeSandbox Preview') : 'CodeSandbox Preview'
+    
+    const descriptionMatch = decodedContent.match(/<meta name="description" content="([^"]*)"\s*\/?>/)
+    const description = descriptionMatch ? (descriptionMatch[1]?.trim() || 'A code sandbox preview page') : 'A code sandbox preview page'
+
+    // 提取设置数据
+    let headHtmlContent = ''
+    let cssLinks: string[] = []
+    let jsLinks: string[] = []
+
+    // 检查是否是扩展的模板文件（包含设置部分）
+    if (decodedContent.includes('<settings>')) {
+      // 提取 head-metadata
+      const headMetadataMatch = decodedContent.match(/<head-metadata>([\s\S]*?)<\/head-metadata>/)
+      headHtmlContent = headMetadataMatch ? (headMetadataMatch[1]?.trim() || '') : ''
+
+      // 提取 css-links
+      const cssLinksMatch = decodedContent.match(/<css-links>([\s\S]*?)<\/css-links>/)
+      if (cssLinksMatch) {
+        cssLinks = cssLinksMatch[1]?.trim()?.split('\n').filter(link => link.trim() !== '') || []
+      }
+
+      // 提取 js-links
+      const jsLinksMatch = decodedContent.match(/<js-links>([\s\S]*?)<\/js-links>/)
+      if (jsLinksMatch) {
+        jsLinks = jsLinksMatch[1]?.trim()?.split('\n').filter(link => link.trim() !== '') || []
+      }
+    }
+
+    return {
+      html: htmlContent ?? "",
+      css: cssContent ?? "",
+      js: jsContent ?? "",
+      headHtmlContent,
+      cssLinks,
+      jsLinks,
+      title,
+      description
+    }
+  } catch (error) {
+    console.error('解析URL参数失败:', error)
+    return null
+  }
+}
+
+/**
+ * 从URL参数解析页面模板
+ */
+export const parseUrlPage = async (): Promise<{ 
+  html: string; 
+  css: string; 
+  js: string; 
+  headHtmlContent: string; 
+  cssLinks: string[]; 
+  jsLinks: string[];
+  title: string;
+  description: string 
+} | null> => {
+  try {
+    const urlParams = new URLSearchParams(window.location.search)
+    const pageParam = urlParams.get('page')
+    
+    if (!pageParam) return null
+    
+    // 使用指定的模板数据页URL
+    return await parseDemoHtml(pageParam)
+  } catch (error) {
+    console.error('解析URL page参数失败:', error)
+    return null
+  }
+}
+
+/**
  * 解析HTML文件内容
  */
 export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ 

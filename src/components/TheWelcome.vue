@@ -152,7 +152,7 @@
           </div>
 
           <!-- 页面信息设置 -->
-          <div v-if="currentSettingTab === 'other'" class="tab-content">
+          <div v-if="currentSettingTab === 'page'" class="tab-content">
             <div class="setting-item">
               <label>页面标题</label>
               <input v-model="pageTitle" type="text" class="setting-input" placeholder="例如：我的代码沙盒页面">

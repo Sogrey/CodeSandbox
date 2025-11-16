@@ -745,6 +745,8 @@ const handleResize = (e: MouseEvent | TouchEvent) => {
   const maxWidth = containerWidth - 50 - 3 // 右侧保留50px宽度（减去分割线宽度）
   const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX))
 
+  throttleUpdateButtonsMode(newWidth)
+
   // 直接更新宽度值，避免DOM操作在动画帧中
   editorWidth.value = newWidth
   previewWidth.value = containerWidth - newWidth - 3
@@ -769,60 +771,62 @@ const handleResize = (e: MouseEvent | TouchEvent) => {
   if (editorPanel) {
     editorPanel.style.transition = 'none'
   }
-
-  // 使用节流更新按钮显示模式，避免频繁触发
-  throttleUpdateButtonsMode(newWidth)
 }
 
-// 节流版本的按钮更新模式（性能优化）
-let throttleTimeout: any = null
+// 缓存DOM元素，避免重复查询
+let cachedButtonGroup: HTMLElement | null = null
+let cachedSettingsBtn: HTMLElement | null = null
+
 let lastWidth = 0
+let lastCompactState = false
+
 const throttleUpdateButtonsMode = (width: number) => {
   // 如果宽度变化很小，跳过更新
   if (Math.abs(width - lastWidth) < 5) return
   lastWidth = width
 
-  // 清除之前的定时器
-  if (throttleTimeout) {
-    clearTimeout(throttleTimeout)
-  }
+  // 立即检查是否需要更新，避免不必要的延迟
+  const shouldBeCompact = width < 650
+  if (lastCompactState === shouldBeCompact) return
 
-  // 使用节流，100ms内只更新一次
-  throttleTimeout = setTimeout(() => {
-    updateButtonsMode(width)
-  }, 100)
+  updateButtonsMode(width)
 }
 
 // 更新按钮显示模式
 const updateButtonsMode = (width: number) => {
-  // 当编辑器宽度小于600px时，切换到紧凑模式（只显示图标）
+  // 当编辑器宽度小于650px时，切换到紧凑模式（只显示图标）
   const shouldBeCompact = width < 650
 
-  if (isButtonsCompact.value !== shouldBeCompact) {
-    isButtonsCompact.value = shouldBeCompact
+  // 如果状态没有变化，直接返回
+  if (lastCompactState === shouldBeCompact) return
+  lastCompactState = shouldBeCompact
 
-    // 延迟一点时间更新DOM，避免频繁重绘
-    setTimeout(() => {
-      const buttonGroup = document.querySelector('.button-group') as HTMLElement
-      const settingsBtn = document.querySelector('.settings-btn') as HTMLElement
-
-      if (buttonGroup) {
-        if (isButtonsCompact.value) {
-          buttonGroup.classList.add('compact')
-        } else {
-          buttonGroup.classList.remove('compact')
-        }
-      }
-
-      if (settingsBtn) {
-        if (isButtonsCompact.value) {
-          settingsBtn.classList.add('compact')
-        } else {
-          settingsBtn.classList.remove('compact')
-        }
-      }
-    }, 10)
+  // 缓存DOM元素，避免重复查询
+  if (!cachedButtonGroup) {
+    cachedButtonGroup = document.querySelector('.button-group') as HTMLElement
   }
+  if (!cachedSettingsBtn) {
+    cachedSettingsBtn = document.querySelector('.settings-btn') as HTMLElement
+  }
+
+  if (cachedButtonGroup) {
+    if (shouldBeCompact) {
+      cachedButtonGroup.classList.add('compact')
+    } else {
+      cachedButtonGroup.classList.remove('compact')
+    }
+  }
+
+  if (cachedSettingsBtn) {
+    if (shouldBeCompact) {
+      cachedSettingsBtn.classList.add('compact')
+    } else {
+      cachedSettingsBtn.classList.remove('compact')
+    }
+  }
+
+  // 立即更新Vue响应式状态，无需额外延迟
+  isButtonsCompact.value = shouldBeCompact
 }
 
 // 停止调整大小
@@ -866,12 +870,6 @@ const stopResize = () => {
   // 清除缓存的DOM元素，以便下次重新获取
   cachedContainer = null
   cachedPreviewPanel = null
-
-  // 清除节流定时器
-  if (throttleTimeout) {
-    clearTimeout(throttleTimeout)
-    throttleTimeout = null
-  }
 }
 
 // 清理
@@ -967,6 +965,7 @@ onUnmounted(() => {
       display: flex;
       gap: 8px;
       align-items: center;
+      margin-left: 16px;
 
       .button-group {
         display: flex;

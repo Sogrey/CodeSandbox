@@ -176,17 +176,7 @@ public/
   - `codemirror-js/html/css` - 语言包
   - `codemirror-state/view/language/commands` - 基础包
   - `codemirror-utils` - 工具包
-
-### 构建优化
-- **CodeMirror 精细分包**：将 CodeMirror 包拆分为多个独立chunk
-- **包体积优化**：最大包体积从327KB减少到189KB
-- **缓存策略优化**：支持按需加载，提高首屏加载速度
-- **分包策略**：
-  - `codemirror-core` - 核心包
-  - `codemirror-js/html/css` - 语言包
-  - `codemirror-state/view/language/commands` - 基础包
-  - `codemirror-utils` - 工具包
-
+  
 ### 工具功能
 - 一键代码格式化
 - 下载完整 HTML 文件

@@ -723,6 +723,10 @@ cursor: col-resize;
   document.body.appendChild(overlay)
 }
 
+// 缓存DOM元素以提高性能
+let cachedContainer: HTMLElement | null = null
+let cachedPreviewPanel: HTMLElement | null = null
+
 // 处理调整大小
 const handleResize = (e: MouseEvent | TouchEvent) => {
   if (!isResizing) return
@@ -731,26 +735,53 @@ const handleResize = (e: MouseEvent | TouchEvent) => {
   const currentX = e instanceof MouseEvent ? e.clientX : e.touches[0]!.clientX
   const deltaX = currentX - startX
 
-  // 计算新的编辑器宽度，限制在合理范围内
-  const containerWidth = document.querySelector('.editor-preview-container')?.clientWidth || 1200
+  // 获取容器宽度（缓存以提高性能）
+  if (!cachedContainer) {
+    cachedContainer = document.querySelector('.editor-preview-container') as HTMLElement
+  }
+  const containerWidth = cachedContainer?.clientWidth || 1200
+  
   const minWidth = 500 // 左侧最小宽度
   const maxWidth = containerWidth - 50 - 3 // 右侧保留50px宽度（减去分割线宽度）
   const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX))
-  editorWidth.value = newWidth
-
-  // 更新预览区域宽度
-  previewWidth.value = containerWidth - newWidth - 3
-
-  // 实时更新预览区域宽度
-  if (previewFrame.value) {
-    const previewPanel = previewFrame.value.closest('.preview-panel') as HTMLElement
-    if (previewPanel) {
-      previewPanel.style.width = `calc(100% - ${newWidth + 3}px)`
+  
+  // 使用 requestAnimationFrame 优化性能
+  requestAnimationFrame(() => {
+    editorWidth.value = newWidth
+    previewWidth.value = containerWidth - newWidth - 3
+    
+    // 实时更新预览区域宽度（缓存以提高性能）
+    if (previewFrame.value) {
+      if (!cachedPreviewPanel) {
+        cachedPreviewPanel = previewFrame.value.closest('.preview-panel') as HTMLElement
+      }
+      if (cachedPreviewPanel) {
+        cachedPreviewPanel.style.width = `calc(100% - ${newWidth + 3}px)`
+      }
     }
-  }
+    
+    // 使用节流更新按钮显示模式，避免频繁触发
+    throttleUpdateButtonsMode(newWidth)
+  })
+}
 
-  // 根据编辑器宽度更新按钮显示模式
-  updateButtonsMode(newWidth)
+// 节流版本的按钮更新模式（性能优化）
+let throttleTimeout: any = null
+let lastWidth = 0
+const throttleUpdateButtonsMode = (width: number) => {
+  // 如果宽度变化很小，跳过更新
+  if (Math.abs(width - lastWidth) < 5) return
+  lastWidth = width
+  
+  // 清除之前的定时器
+  if (throttleTimeout) {
+    clearTimeout(throttleTimeout)
+  }
+  
+  // 使用节流，100ms内只更新一次
+  throttleTimeout = setTimeout(() => {
+    updateButtonsMode(width)
+  }, 100)
 }
 
 // 更新按钮显示模式
@@ -810,6 +841,16 @@ const stopResize = () => {
   const overlay = document.getElementById('resize-overlay')
   if (overlay) {
     overlay.remove()
+  }
+
+  // 清除缓存的DOM元素，以便下次重新获取
+  cachedContainer = null
+  cachedPreviewPanel = null
+
+  // 清除节流定时器
+  if (throttleTimeout) {
+    clearTimeout(throttleTimeout)
+    throttleTimeout = null
   }
 }
 
@@ -1057,7 +1098,7 @@ onUnmounted(() => {
     height: 100%;
     background: transparent;
     cursor: col-resize;
-    
+
     .preview-mode & {
       display: none; // 预览模式下隐藏可点击区域
     }

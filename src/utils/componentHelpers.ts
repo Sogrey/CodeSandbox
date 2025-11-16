@@ -78,7 +78,16 @@ export const generateJsLinks = (jsLinks: string[]): string => {
 /**
  * 解析HTML文件内容
  */
-export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ html: string; css: string; js: string; headHtmlContent: string; cssLinks: string[]; jsLinks: string[] }> => {
+export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ 
+  html: string; 
+  css: string; 
+  js: string; 
+  headHtmlContent: string; 
+  cssLinks: string[]; 
+  jsLinks: string[];
+  title: string;
+  description: string 
+}> => {
   try {
     const response = await fetch(fileUrl)
     const content = await response.text()
@@ -94,6 +103,13 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ 
     // 提取 style 部分
     const styleMatch = content.match(/<style>([\s\S]*?)<\/style>/)
     const cssContent = styleMatch ? styleMatch[1]?.trim() : ''
+
+    // 提取标题和描述
+    const titleMatch = content.match(/<title>([\s\S]*?)<\/title>/)
+    const title = titleMatch ? (titleMatch[1]?.trim() || 'CodeSandbox Preview') : 'CodeSandbox Preview'
+    
+    const descriptionMatch = content.match(/<meta name="description" content="([^"]*)"\s*\/?>/)
+    const description = descriptionMatch ? (descriptionMatch[1]?.trim() || 'A code sandbox preview page') : 'A code sandbox preview page'
 
     // 提取设置数据（如果存在）
     let headHtmlContent = ''
@@ -125,7 +141,9 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ 
       js: jsContent ?? "",
       headHtmlContent,
       cssLinks,
-      jsLinks
+      jsLinks,
+      title,
+      description
     }
   } catch (error) {
     console.error('读取 demo.html 失败:', error)
@@ -135,7 +153,9 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ 
       js: "",
       headHtmlContent: "",
       cssLinks: [],
-      jsLinks: []
+      jsLinks: [],
+      title: 'CodeSandbox Preview',
+      description: 'A code sandbox preview page'
     }
   }
 }

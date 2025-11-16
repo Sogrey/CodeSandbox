@@ -8,6 +8,8 @@
  * @param headHtmlContent Head HTML内容
  * @param cssLinks CSS链接数组
  * @param jsLinks JS链接数组
+ * @param title 页面标题
+ * @param description 页面描述
  * @returns 生成的模板字符串
  */
 export const generateExtendedTemplate = (
@@ -16,11 +18,18 @@ export const generateExtendedTemplate = (
   jsContent: string,
   headHtmlContent: string,
   cssLinks: string[],
-  jsLinks: string[]
+  jsLinks: string[],
+  title?: string,
+  description?: string
 ): string => {
+  const pageTitle = title || 'CodeSandbox Preview'
+  const pageDescription = description || 'A code sandbox preview page'
+  
   return `
 <!-- CodeSandbox Template File -->
 <!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<title>${pageTitle}</title>
+<meta name="description" content="${pageDescription}" />
 <template>
 ${htmlContent}
 </template>
@@ -50,6 +59,8 @@ ${jsLinks.filter(link => link.trim() !== '').map(link => link.trim()).join('\n')
  * 生成完整的HTML文件
  * @param templateVariables 模板变量
  * @param isPreview 是否为预览模式
+ * @param title 页面标题
+ * @param description 页面描述
  * @returns 生成的完整HTML字符串
  */
 export const buildFullHtml = async (
@@ -61,9 +72,14 @@ export const buildFullHtml = async (
     cssLinks?: string
     jsLinks?: string
   },
-  isPreview: boolean = false
+  isPreview: boolean = false,
+  title?: string,
+  description?: string
 ): Promise<string> => {
   const { htmlContent, cssContent, jsContent, headHtmlContent = '', cssLinks = '', jsLinks = '' } = templateVariables
+  
+  const pageTitle = title || 'CodeSandbox Preview'
+  const pageDescription = description || 'A code sandbox preview page'
 
   // 构建完整的HTML
   const fullHtml = `
@@ -72,7 +88,8 @@ export const buildFullHtml = async (
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CodeSandbox Preview</title>
+    <title>${pageTitle}</title>
+    <meta name="description" content="${pageDescription}" />
     ${headHtmlContent}
     ${cssLinks}
     <style>

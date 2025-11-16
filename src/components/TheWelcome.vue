@@ -51,7 +51,7 @@
         <!-- 预览区域 -->
         <div class="preview-panel" :style="{ width: 'calc(100% - ' + (editorWidth + 3) + 'px)' }">
           <div class="preview-header">
-            <span>预览</span>
+            <span>{{ pageTitle }}: {{ pageDescription }}</span>
           </div>
           <iframe ref="previewFrame" class="preview-frame" sandbox="allow-scripts"></iframe>
 
@@ -64,8 +64,8 @@
     </div>
 
     <!-- 设置模态对话框 -->
-    <div v-if="showSettings" class="modal-overlay" @click="showSettings = false">
-      <div class="modal-content" @click.stop>
+    <div v-if="showSettings" class="modal-overlay">
+      <div class="modal-content">
         <div class="modal-header">
           <h3>资源设置</h3>
           <button class="modal-close" @click="showSettings = false">&times;</button>
@@ -114,6 +114,20 @@
                 <button @click="handleAddJsLink" v-if="index === jsLinks.length - 1" class="link-btn add"
                   title="添加">➕</button>
               </div>
+            </div>
+          </div>
+
+          <!-- 页面信息设置 -->
+          <div v-if="currentSettingTab === 'other'" class="tab-content">
+            <div class="setting-item">
+              <label>页面标题</label>
+              <input v-model="pageTitle" type="text" class="setting-input" placeholder="例如：我的代码沙盒页面">
+            </div>
+            <div class="setting-item">
+              <label>页面描述</label>
+              <textarea v-model="pageDescription" class="setting-textarea" placeholder="例如：这是一个用来展示前端代码的沙盒页面..."
+                rows="3">
+              </textarea>
             </div>
           </div>
         </div>
@@ -181,7 +195,7 @@ const files = ref<FileInfo[]>([])
 
 // 初始化文件内容
 const initFiles = async () => {
-  const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks } = await parseDemoHtml()
+  const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = await parseDemoHtml()
 
   files.value = [
     {
@@ -213,6 +227,15 @@ const initFiles = async () => {
   if (parsedJsLinks.length > 0) {
     jsLinks.value = parsedJsLinks
   }
+
+  // 更新标题和描述
+  if (parsedTitle) {
+    pageTitle.value = parsedTitle
+  }
+
+  if (parsedDescription) {
+    pageDescription.value = parsedDescription
+  }
 }
 
 const currentFile = ref('script.js')
@@ -229,11 +252,16 @@ const currentSettingTab = ref('html') // 当前设置标签页
 const settingTabs = [
   { id: 'html', label: 'HTML' },
   { id: 'css', label: 'CSS' },
-  { id: 'js', label: 'JS' }
+  { id: 'js', label: 'JS' },
+  { id: 'other', label: '其他' }
 ]
 const headHtmlContent = ref('') // HTML head内容
 const cssLinks = ref(['']) // CSS CDN链接数组
-const jsLinks = ref(['https://unpkg.com/vue@3/dist/vue.global.js']) // JS CDN链接数组，包含默认Vue CDN
+const jsLinks = ref(['']) // JS CDN链接数组
+
+// 标题和描述状态
+const pageTitle = ref('CodeSandbox Preview') // 页面标题
+const pageDescription = ref('A code sandbox preview page') // 页面描述
 
 let editor: any = null
 let isResizing = false
@@ -335,32 +363,10 @@ const runCode = async () => {
     jsLinks: generateJsLinks(jsLinks.value)
   }
 
-  const fullHtml = await buildFullHtml(templateVariables, true)
+  const fullHtml = await buildFullHtml(templateVariables, true, pageTitle.value, pageDescription.value)
 
   // 使用 srcdoc 属性安全地设置 iframe 内容
   previewFrame.value.srcdoc = fullHtml
-}
-
-// 设置相关方法
-
-// 添加CSS链接输入框
-const handleAddCssLink = () => {
-  addCssLink(cssLinks.value)
-}
-
-// 删除CSS链接输入框
-const handleRemoveCssLink = (index: number) => {
-  removeCssLink(cssLinks.value, index)
-}
-
-// 添加JS链接输入框
-const handleAddJsLink = () => {
-  addJsLink(jsLinks.value)
-}
-
-// 删除JS链接输入框
-const handleRemoveJsLink = (index: number) => {
-  removeJsLink(jsLinks.value, index)
 }
 
 // 保存设置
@@ -386,7 +392,7 @@ const downloadFullHtml = async () => {
     jsLinks: generateJsLinks(jsLinks.value)
   }
 
-  const fullHtml = await buildFullHtml(templateVariables, false)
+  const fullHtml = await buildFullHtml(templateVariables, false, pageTitle.value, pageDescription.value)
 
   // 下载完整HTML文件
   downloadHtml(fullHtml, 'code-sandbox-full.html')
@@ -398,10 +404,34 @@ const downloadFullHtml = async () => {
     jsContent,
     headHtmlContent.value,
     cssLinks.value,
-    jsLinks.value
+    jsLinks.value,
+    pageTitle.value,
+    pageDescription.value
   )
 
   downloadHtml(templateHtml, 'code-sandbox-template.html')
+}
+
+// 设置相关方法
+
+// 添加CSS链接输入框
+const handleAddCssLink = () => {
+  addCssLink(cssLinks.value)
+}
+
+// 删除CSS链接输入框
+const handleRemoveCssLink = (index: number) => {
+  removeCssLink(cssLinks.value, index)
+}
+
+// 添加JS链接输入框
+const handleAddJsLink = () => {
+  addJsLink(jsLinks.value)
+}
+
+// 删除JS链接输入框
+const handleRemoveJsLink = (index: number) => {
+  removeJsLink(jsLinks.value, index)
 }
 
 // 初始化编辑器
@@ -841,7 +871,7 @@ onUnmounted(() => {
     top: 0;
     left: 0;
     right: 0;
-    background: rgba(128, 128, 128, 0.7); // 灰度半透明背景
+    background: rgba(0, 0, 0, 0.4); // 灰度半透明背景
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
     padding: 8px 16px;
     font-size: 14px;
@@ -1010,7 +1040,7 @@ onUnmounted(() => {
   }
 
   .setting-input {
-    width: 100%;
+    width: 95%;
     background: #1e1e1e;
     border: 1px solid #3e3e42;
     color: #ffffff;
@@ -1111,7 +1141,7 @@ onUnmounted(() => {
 
 // 设置文本区域
 .setting-textarea {
-  width: 100%;
+  width: 95%;
   background: #1e1e1e;
   border: 1px solid #3e3e42;
   color: #ffffff;

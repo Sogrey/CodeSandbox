@@ -4,7 +4,7 @@
       <!-- 编辑器和预览区 -->
       <div class="editor-preview-container">
         <!-- 编辑器区域 -->
-        <div class="editor-panel" :style="{ width: editorWidth + 'px' }">
+        <div class="editor-panel" :style="{ width: isPreviewMode ? '0px' : editorWidth + 'px' }" :class="{ 'preview-mode': isPreviewMode }">
           <!-- 编辑器工具栏 -->
           <div class="editor-toolbar">
             <div class="editor-tabs">
@@ -70,14 +70,21 @@
         </div>
 
         <!-- 分割线 -->
-        <div class="resize-handle" @mousedown="startResize" @touchstart="startResize"></div>
+        <div class="resize-handle" :class="{ 'preview-mode': isPreviewMode }" @mousedown="startResize" @touchstart="startResize"></div>
 
         <!-- 预览区域 -->
-        <div class="preview-panel" :style="{ width: 'calc(100% - ' + (editorWidth + 3) + 'px)' }">
+        <div class="preview-panel" :style="{ width: isPreviewMode ? '100%' : 'calc(100% - ' + (editorWidth + 3) + 'px)' }">
           <div class="preview-header">
             <span>{{ pageTitle }}: {{ pageDescription }}</span>
           </div>
           <iframe ref="previewFrame" class="preview-frame" sandbox="allow-scripts"></iframe>
+
+          <!-- 编辑/预览模式切换按钮 -->
+          <button class="preview-mode-toggle" @click="togglePreviewMode" :title="isPreviewMode ? '切换到编辑模式' : '切换到预览模式'">
+            <span class="toggle-text">
+              {{ isPreviewMode ? '编辑模式⇦' : '⇨预览模式' }}
+            </span>
+          </button>
 
           <!-- 右侧宽度显示 -->
           <div v-if="showWidthInfo" class="width-info right-width-info">
@@ -356,6 +363,9 @@ const showWidthInfo = ref(false) // 是否显示宽度信息
 const showSettings = ref(false) // 是否显示设置模态框
 const isButtonsCompact = ref(false) // 按钮是否处于紧凑模式
 
+// 编辑/预览模式相关状态
+const isPreviewMode = ref(false) // 是否为预览模式
+
 // 分享功能相关状态
 const showSharePopup = ref(false) // 是否显示分享气泡浮窗
 const shareUrlInput = ref<HTMLInputElement>() // 分享链接输入框引用
@@ -616,6 +626,16 @@ const handleRemoveJsLink = (index: number) => {
   removeJsLink(jsLinks.value, index)
 }
 
+// 切换编辑/预览模式
+const togglePreviewMode = () => {
+  isPreviewMode.value = !isPreviewMode.value
+  
+  // 如果切换到预览模式，立即运行一次代码确保预览最新内容
+  if (isPreviewMode.value) {
+    setTimeout(runCode, 100)
+  }
+}
+
 // 初始化编辑器
 onMounted(async () => {
   // 首先初始化文件内容
@@ -834,6 +854,12 @@ onUnmounted(() => {
   flex-direction: column;
   position: relative;
   position: relative;
+  transition: width 0.3s ease, opacity 0.3s ease; // 添加平滑过渡动画
+
+  &.preview-mode {
+    opacity: 0; // 预览模式下完全透明
+    pointer-events: none; // 禁止交互
+  }
 
   .editor-toolbar {
     background: #252526;
@@ -1010,7 +1036,12 @@ onUnmounted(() => {
   cursor: col-resize;
   position: relative;
   z-index: 20;
-  transition: background-color 0.2s ease;
+  transition: all 0.3s ease; // 添加平滑过渡动画
+
+  &.preview-mode {
+    opacity: 0; // 预览模式下完全透明
+    pointer-events: none; // 禁止交互
+  }
 
   // 增加可点击区域
   &::before {
@@ -1053,6 +1084,7 @@ onUnmounted(() => {
   position: relative;
   position: relative;
   min-width: 50px; // 确保右侧最小宽度为50px
+  transition: width 0.3s ease; // 添加平滑过渡动画
 
   .preview-header {
     position: absolute;
@@ -1074,6 +1106,41 @@ onUnmounted(() => {
     height: 100%; // 占满父容器全部高度
     border: none;
     background: white;
+  }
+
+  // 编辑/预览模式切换按钮
+  .preview-mode-toggle {
+    position: absolute;
+    left: -16px; // 紧贴左侧边框
+    bottom: 16px; // 距底部16px
+    background: rgba(0, 0, 0, 0.4); // 背景色rgba(0,0,0,0.4)
+    border: none;
+    color: white; // 字体颜色白色
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 0 50% 50% 0; // 左上左下直角，右上右下圆角
+    z-index: 10;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    
+    &:hover {
+      background: rgba(0, 0, 0, 0.6);
+      transform: translateX(-2px);
+    }
+
+    &:active {
+      background: rgba(0, 0, 0, 0.7);
+      transform: translateX(0);
+    }
+
+    .toggle-text {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
   }
 }
 

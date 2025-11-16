@@ -745,24 +745,33 @@ const handleResize = (e: MouseEvent | TouchEvent) => {
   const maxWidth = containerWidth - 50 - 3 // 右侧保留50px宽度（减去分割线宽度）
   const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX))
   
-  // 使用 requestAnimationFrame 优化性能
-  requestAnimationFrame(() => {
-    editorWidth.value = newWidth
-    previewWidth.value = containerWidth - newWidth - 3
-    
-    // 实时更新预览区域宽度（缓存以提高性能）
-    if (previewFrame.value) {
-      if (!cachedPreviewPanel) {
-        cachedPreviewPanel = previewFrame.value.closest('.preview-panel') as HTMLElement
-      }
-      if (cachedPreviewPanel) {
-        cachedPreviewPanel.style.width = `calc(100% - ${newWidth + 3}px)`
-      }
+  // 直接更新宽度值，避免DOM操作在动画帧中
+  editorWidth.value = newWidth
+  previewWidth.value = containerWidth - newWidth - 3
+  
+  // 实时更新预览区域宽度（使用绝对宽度计算，避免百分比计算误差）
+  if (previewFrame.value) {
+    if (!cachedPreviewPanel) {
+      cachedPreviewPanel = previewFrame.value.closest('.preview-panel') as HTMLElement
     }
-    
-    // 使用节流更新按钮显示模式，避免频繁触发
-    throttleUpdateButtonsMode(newWidth)
-  })
+    if (cachedPreviewPanel) {
+      // 临时禁用预览面板的CSS过渡动画，避免在拖拽时执行动画逻辑
+      cachedPreviewPanel.style.transition = 'none'
+      // 使用绝对宽度计算，确保布局稳定
+      cachedPreviewPanel.style.width = `${containerWidth - newWidth - 3}px`
+      // 强制重绘以提升性能
+      cachedPreviewPanel.style.display = 'block'
+    }
+  }
+  
+  // 临时禁用编辑器面板的CSS过渡动画
+  const editorPanel = document.querySelector('.editor-panel') as HTMLElement
+  if (editorPanel) {
+    editorPanel.style.transition = 'none'
+  }
+  
+  // 使用节流更新按钮显示模式，避免频繁触发
+  throttleUpdateButtonsMode(newWidth)
 }
 
 // 节流版本的按钮更新模式（性能优化）
@@ -821,6 +830,17 @@ const stopResize = () => {
   if (!isResizing) return
 
   isResizing = false
+
+  // 恢复CSS过渡动画
+  const previewPanel = document.querySelector('.preview-panel') as HTMLElement
+  if (previewPanel) {
+    previewPanel.style.transition = 'width 0.3s ease'
+  }
+  
+  const editorPanel = document.querySelector('.editor-panel') as HTMLElement
+  if (editorPanel) {
+    editorPanel.style.transition = 'transform 0.3s ease, opacity 0.3s ease, width 0.3s ease'
+  }
 
   // 延迟隐藏宽度信息（2秒后消失）
   hideTimeout = setTimeout(() => {
@@ -898,11 +918,13 @@ onUnmounted(() => {
   flex-direction: column;
   position: relative;
   position: relative;
-  transition: width 0.3s ease, opacity 0.3s ease; // 添加平滑过渡动画
+  // 使用transform动画替代width动画，避免重排
+  transition: transform 0.3s ease, opacity 0.3s ease, width 0.3s ease; // 添加transform动画
 
   &.preview-mode {
     opacity: 0; // 预览模式下完全透明
     pointer-events: none; // 禁止交互
+    transform: translateX(-100%); // 平滑移出屏幕
   }
 
   .editor-toolbar {
@@ -969,7 +991,9 @@ onUnmounted(() => {
           line-height: 1;
           position: relative;
           min-width: auto;
-          transition: all 0.2s ease;
+          // 使用will-change优化动画性能
+          will-change: background-color;
+          transition: background-color 0.2s ease; // 只动画必要的属性
 
           &:hover {
             background: #4a4a4a;
@@ -994,7 +1018,8 @@ onUnmounted(() => {
 
           .btn-text {
             white-space: nowrap;
-            transition: all 0.2s ease;
+            // 移除不必要的动画
+            transition: none;
           }
 
           // 响应式：当容器宽度不足时隐藏文字
@@ -1030,7 +1055,8 @@ onUnmounted(() => {
         gap: 4px;
         line-height: 1;
         position: relative;
-        transition: all 0.2s ease;
+        will-change: background-color;
+        transition: background-color 0.2s ease; // 只动画必要的属性
 
         &:hover {
           background: #3d3d3d;
@@ -1043,7 +1069,8 @@ onUnmounted(() => {
 
         .btn-text {
           white-space: nowrap;
-          transition: all 0.2s ease;
+          // 移除不必要的动画
+          transition: none;
         }
 
         // 窄屏模式：只显示图标
@@ -1080,12 +1107,15 @@ onUnmounted(() => {
   cursor: col-resize;
   position: relative;
   z-index: 20;
-  transition: all 0.3s ease; // 添加平滑过渡动画
+  // 减少动画属性，只动画必要的属性
+  transition: background-color 0.2s ease; // 简化为只动画背景色
 
   &.preview-mode {
     width: 0px; // 预览模式下宽度设为0
     opacity: 0; // 完全透明
     pointer-events: none; // 禁止交互
+    // 预览模式下添加transform过渡
+    transition: transform 0.3s ease, opacity 0.3s ease, background-color 0.2s ease;
   }
 
   // 增加可点击区域
@@ -1106,21 +1136,18 @@ onUnmounted(() => {
 
   &:hover {
     background: #007acc;
-    width: 8px;
-    margin-left: -1px;
+    // 移除宽度变化动画，避免布局重排
   }
 
   &:active {
     background: #005a9e;
-    width: 8px;
-    margin-left: -1px;
+    // 移除宽度变化动画
   }
 
   // 拖拽时的视觉反馈
   &.resizing {
     background: #005a9e !important;
-    width: 8px;
-    margin-left: -1px;
+    // 移除宽度变化动画
   }
 }
 
@@ -1133,7 +1160,8 @@ onUnmounted(() => {
   position: relative;
   position: relative;
   min-width: 50px; // 确保右侧最小宽度为50px
-  transition: width 0.3s ease; // 添加平滑过渡动画
+  // 使用width动画，确保布局稳定
+  transition: width 0.3s ease;
 
   .preview-header {
     position: absolute;
@@ -1171,7 +1199,9 @@ onUnmounted(() => {
     font-weight: 500;
     border-radius: 0 15px 15px 0; // 左上左下直角，右上右下圆角
     z-index: 10;
-    transition: all 0.3s ease;
+    // 优化动画：只动画必要的属性，使用will-change
+    will-change: transform, background-color;
+    transition: transform 0.2s ease, background-color 0.2s ease; // 简化为只动画变换和背景色
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 
     &:hover {

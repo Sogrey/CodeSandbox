@@ -525,7 +525,7 @@ const downloadFullHtml = async () => {
   const fullHtml = await buildFullHtml(templateVariables, false, pageTitle.value, pageDescription.value)
 
   // 下载完整HTML文件
-  downloadHtml(fullHtml, 'code-sandbox-full.html')
+  downloadHtml(fullHtml, pageTitle.value ? `${pageTitle.value}-full.html` : 'code-sandbox-full.html')
 
   // 下载扩展的HTML模板文件（包含所有编辑和设置数据）
   const templateHtml = generateExtendedTemplate(
@@ -539,7 +539,7 @@ const downloadFullHtml = async () => {
     pageDescription.value
   )
 
-  downloadHtml(templateHtml, 'code-sandbox-template.html')
+  downloadHtml(templateHtml, pageTitle.value ? `${pageTitle.value}-template.html` : 'code-sandbox-template.html')
 }
 
 // 显示分享弹窗
@@ -740,15 +740,15 @@ const handleResize = (e: MouseEvent | TouchEvent) => {
     cachedContainer = document.querySelector('.editor-preview-container') as HTMLElement
   }
   const containerWidth = cachedContainer?.clientWidth || 1200
-  
+
   const minWidth = 500 // 左侧最小宽度
   const maxWidth = containerWidth - 50 - 3 // 右侧保留50px宽度（减去分割线宽度）
   const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX))
-  
+
   // 直接更新宽度值，避免DOM操作在动画帧中
   editorWidth.value = newWidth
   previewWidth.value = containerWidth - newWidth - 3
-  
+
   // 实时更新预览区域宽度（使用绝对宽度计算，避免百分比计算误差）
   if (previewFrame.value) {
     if (!cachedPreviewPanel) {
@@ -763,13 +763,13 @@ const handleResize = (e: MouseEvent | TouchEvent) => {
       cachedPreviewPanel.style.display = 'block'
     }
   }
-  
+
   // 临时禁用编辑器面板的CSS过渡动画
   const editorPanel = document.querySelector('.editor-panel') as HTMLElement
   if (editorPanel) {
     editorPanel.style.transition = 'none'
   }
-  
+
   // 使用节流更新按钮显示模式，避免频繁触发
   throttleUpdateButtonsMode(newWidth)
 }
@@ -781,12 +781,12 @@ const throttleUpdateButtonsMode = (width: number) => {
   // 如果宽度变化很小，跳过更新
   if (Math.abs(width - lastWidth) < 5) return
   lastWidth = width
-  
+
   // 清除之前的定时器
   if (throttleTimeout) {
     clearTimeout(throttleTimeout)
   }
-  
+
   // 使用节流，100ms内只更新一次
   throttleTimeout = setTimeout(() => {
     updateButtonsMode(width)
@@ -836,7 +836,7 @@ const stopResize = () => {
   if (previewPanel) {
     previewPanel.style.transition = 'width 0.3s ease'
   }
-  
+
   const editorPanel = document.querySelector('.editor-panel') as HTMLElement
   if (editorPanel) {
     editorPanel.style.transition = 'transform 0.3s ease, opacity 0.3s ease, width 0.3s ease'

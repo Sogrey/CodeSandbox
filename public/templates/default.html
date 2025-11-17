@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{title}}</title>
-    <meta name="description" content="{{description}}" />
+    <meta name="description" content="{{{description}}}" />
     {{{headHtmlContent}}}
     {{{cssLinks}}}
     <style>
-      {{cssContent}}
+      {{{cssContent}}}
     </style>
   </head>
   <body>
@@ -19,7 +19,7 @@
       // 设置预览模式相关的逻辑
       console.log("Preview mode active");
     {{/isPreview}}
-    {{jsContent}}
+    {{{jsContent}}}
     </script>
   </body>
 </html>

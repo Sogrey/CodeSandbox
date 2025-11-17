@@ -1,6 +1,17 @@
 // 模板生成器
 import Mustache from 'mustache'
 
+export interface TemplateVariables {
+  title?: string
+  htmlContent: string
+  cssContent: string
+  jsContent: string
+  headHtmlContent?: string
+  cssLinks?: string
+  jsLinks?: string
+  [key: string]: string | string[] | undefined
+}
+
 /**
  * 生成扩展的HTML模板文件
  * @param htmlContent HTML内容
@@ -59,21 +70,6 @@ ${jsLinks.filter(link => link.trim() !== '').map(link => link.trim()).join('\n')
 }
 
 /**
- * 生成完整的HTML文件
- * @param templateType 模板类型，对应 public/templates/ 目录下的文件名
- * @param templateVariables 模板变量
- * @param isPreview 是否为预览模式
- * @param title 页面标题
- * @param description 页面描述
- * @returns 生成的完整HTML字符串
- * @example
- * // 使用默认模板
- * const html = await buildFullHtml('default', templateData)
- * @example
- * // 使用自定义模板
- * const html = await buildFullHtml('vue3', templateData)
- */
-/**
  * 渲染模板内容（使用 Mustache 引擎）
  * @param template 模板字符串
  * @param variables 模板变量对象
@@ -81,29 +77,11 @@ ${jsLinks.filter(link => link.trim() !== '').map(link => link.trim()).join('\n')
  */
 const renderTemplate = (
   template: string,
-  variables: Record<string, any>
+  variables: Record<string, string | boolean>
 ): string => {
-  // 预处理模板：将 <%= %> 和 <%- %> 转换为 Mustache 语法
-  let processedTemplate = template
-  
-  // 转换 <%= variable %> 为 {{variable}}（转义输出）
-  processedTemplate = processedTemplate.replace(/<%=\s*(\w+)\s*%>/g, '{{$1}}')
-  
-  // 转换 <%- variable %> 为 {{{variable}}}（不转义输出）
-  processedTemplate = processedTemplate.replace(/<%-\s*(\w+)\s*%>/g, '{{$1}}')
-  
-  // 处理条件语句：<% if (condition) { %> ... <% } %>
-  processedTemplate = processedTemplate.replace(
-    /<%\s*if\s*\(([^)]+)\)\s*%>([\s\S]*?)<%\s*}\s*%>/g,
-    (match, condition, content) => {
-      // Mustache 条件语法：{{#condition}} ... {{/condition}}
-      return `{{#${condition}}}${content}{{/${condition}}`
-    }
-  )
-
-  // 使用 Mustache 渲染模板
+  // 直接使用 Mustache 渲染模板（模板文件已经使用标准 Mustache 语法）
   try {
-    return Mustache.render(processedTemplate, variables)
+    return Mustache.render(template, variables)
   } catch (error) {
     console.error('模板渲染失败:', error)
     throw error

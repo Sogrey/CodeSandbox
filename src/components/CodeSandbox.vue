@@ -178,7 +178,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import jsBeautify from 'js-beautify'
 import { buildFullHtml, generateExtendedTemplate } from '@/utils/templateGenerator'
-import type { TemplateVariables } from '@/utils/templateManager'
+import type { TemplateVariables } from '@/utils/templateGenerator'
 import {
   getCurrentFile,
   getFileContents,

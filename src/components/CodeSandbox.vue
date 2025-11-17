@@ -532,6 +532,7 @@ const downloadFullHtml = async () => {
 
   // 下载扩展的HTML模板文件（包含所有编辑和设置数据）
   const templateHtml = generateExtendedTemplate(
+    templateType.value,
     htmlContent,
     cssContent,
     jsContent,
@@ -563,6 +564,7 @@ const generateShareUrl = () => {
 
   // 生成扩展的HTML模板内容
   const templateContent = generateExtendedTemplate(
+    templateType.value,
     htmlContent,
     cssContent,
     jsContent,

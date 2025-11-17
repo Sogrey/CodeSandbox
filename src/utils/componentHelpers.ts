@@ -207,13 +207,13 @@ export const parseUrlPage = async (): Promise<{
  * // URL: https://example.com?type=vue3
  * const type = await parseTemplateType(); // 返回 'vue3'
  */
-export const parseTemplateType = async (): Promise<string | null> => {
+export const parseTemplateType = async (): Promise<string> => {
   try {
     const urlParams = new URLSearchParams(window.location.search)
     return urlParams.get('type') ?? 'default'
   } catch (error) {
     console.error('解析URL type参数失败:', error)
-    return null
+    return 'default'
   }
 }
 

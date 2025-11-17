@@ -22,10 +22,8 @@
     "@codemirror/state": "^6.4.1",
     "@codemirror/view": "^6.36.2",
     "@fsegurai/codemirror-theme-monokai": "^6.2.2",
-    "@types/ejs": "^3.1.5",
     "@types/js-beautify": "^1.14.3",
     "codemirror": "^6.0.2",
-    "ejs": "^3.1.10",
     "js-beautify": "^1.15.4",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"

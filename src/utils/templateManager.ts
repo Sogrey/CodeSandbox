@@ -48,7 +48,7 @@ const readTemplateFile = async (templateName: string): Promise<string> => {
     return await response.text()
   } catch (error) {
     // 如果动态加载失败，返回默认模板
-    console.warn(`Failed to load template "${templateName}", using default template instead`)
+    console.warn(`Failed to load template "${templateName}", using default template instead`, error)
     return `<!DOCTYPE html>
 <html>
 <head>

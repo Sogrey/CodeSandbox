@@ -83,37 +83,37 @@ export const checkUrlParams = (): 'code' | 'page' | null => {
   const urlParams = new URLSearchParams(window.location.search)
   const codeParam = urlParams.get('code')
   const pageParam = urlParams.get('page')
-  
+
   // 优先检查code参数
   if (codeParam) return 'code'
   // 其次检查page参数
   if (pageParam) return 'page'
-  
+
   return null
 }
 
 /**
  * 从URL参数解析代码内容
  */
-export const parseUrlCode = (): { 
-  html: string; 
-  css: string; 
-  js: string; 
-  headHtmlContent: string; 
-  cssLinks: string[]; 
+export const parseUrlCode = (): {
+  html: string;
+  css: string;
+  js: string;
+  headHtmlContent: string;
+  cssLinks: string[];
   jsLinks: string[];
   title: string;
-  description: string 
+  description: string
 } | null => {
   try {
     const urlParams = new URLSearchParams(window.location.search)
     const codeParam = urlParams.get('code')
-    
+
     if (!codeParam) return null
-    
+
     // 解码Base64并转换为原始内容
     const decodedContent = decodeURIComponent(atob(codeParam))
-    
+
     // 解析模板内容
     const templateMatch = decodedContent.match(/<template>([\s\S]*?)<\/template>/)
     const htmlContent = templateMatch ? templateMatch[1]?.trim() : ''
@@ -129,7 +129,7 @@ export const parseUrlCode = (): {
     // 提取标题和描述
     const titleMatch = decodedContent.match(/<title>([\s\S]*?)<\/title>/)
     const title = titleMatch ? (titleMatch[1]?.trim() || 'CodeSandbox Preview') : 'CodeSandbox Preview'
-    
+
     const descriptionMatch = decodedContent.match(/<meta name="description" content="([^"]*)"\s*\/?>/)
     const description = descriptionMatch ? (descriptionMatch[1]?.trim() || 'A code sandbox preview page') : 'A code sandbox preview page'
 
@@ -176,22 +176,22 @@ export const parseUrlCode = (): {
 /**
  * 从URL参数解析页面模板
  */
-export const parseUrlPage = async (): Promise<{ 
-  html: string; 
-  css: string; 
-  js: string; 
-  headHtmlContent: string; 
-  cssLinks: string[]; 
+export const parseUrlPage = async (): Promise<{
+  html: string;
+  css: string;
+  js: string;
+  headHtmlContent: string;
+  cssLinks: string[];
   jsLinks: string[];
   title: string;
-  description: string 
+  description: string
 } | null> => {
   try {
     const urlParams = new URLSearchParams(window.location.search)
     const pageParam = urlParams.get('page')
-    
+
     if (!pageParam) return null
-    
+
     // 使用指定的模板数据页URL
     return await parseDemoHtml(pageParam)
   } catch (error) {
@@ -201,17 +201,34 @@ export const parseUrlPage = async (): Promise<{
 }
 
 /**
+ * 解析URL中的模板类型参数
+ * @returns {Promise<string | null>} 返回模板类型字符串，解析失败返回null
+ * @example
+ * // URL: https://example.com?type=vue3
+ * const type = await parseTemplateType(); // 返回 'vue3'
+ */
+export const parseTemplateType = async (): Promise<string | null> => {
+  try {
+    const urlParams = new URLSearchParams(window.location.search)
+    return urlParams.get('type') ?? 'default'
+  } catch (error) {
+    console.error('解析URL type参数失败:', error)
+    return null
+  }
+}
+
+/**
  * 解析HTML文件内容
  */
-export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{ 
-  html: string; 
-  css: string; 
-  js: string; 
-  headHtmlContent: string; 
-  cssLinks: string[]; 
+export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{
+  html: string;
+  css: string;
+  js: string;
+  headHtmlContent: string;
+  cssLinks: string[];
   jsLinks: string[];
   title: string;
-  description: string 
+  description: string
 }> => {
   try {
     const response = await fetch(fileUrl)
@@ -232,7 +249,7 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{
     // 提取标题和描述
     const titleMatch = content.match(/<title>([\s\S]*?)<\/title>/)
     const title = titleMatch ? (titleMatch[1]?.trim() || 'CodeSandbox Preview') : 'CodeSandbox Preview'
-    
+
     const descriptionMatch = content.match(/<meta name="description" content="([^"]*)"\s*\/?>/)
     const description = descriptionMatch ? (descriptionMatch[1]?.trim() || 'A code sandbox preview page') : 'A code sandbox preview page'
 
@@ -320,7 +337,7 @@ export const saveSettings = (
   // 过滤掉空的链接
   const filteredCssLinks = cssLinks.filter(link => link.trim() !== '')
   const filteredJsLinks = jsLinks.filter(link => link.trim() !== '')
-  
+
   // 更新全局设置
   currentSettings = {
     headHtmlContent: headHtmlContent.trim(),
@@ -328,7 +345,7 @@ export const saveSettings = (
     jsLinks: filteredJsLinks,
     timestamp: new Date().toISOString()
   }
-  
+
   console.log('保存设置:', currentSettings)
 }
 

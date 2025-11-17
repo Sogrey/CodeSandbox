@@ -1,4 +1,5 @@
 // 模板生成器
+import ejs from 'ejs'
 
 /**
  * 生成扩展的HTML模板文件
@@ -24,7 +25,7 @@ export const generateExtendedTemplate = (
 ): string => {
   const pageTitle = title || 'CodeSandbox Preview'
   const pageDescription = description || 'A code sandbox preview page'
-  
+
   return `
 <!-- CodeSandbox Template File -->
 <!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
@@ -57,13 +58,21 @@ ${jsLinks.filter(link => link.trim() !== '').map(link => link.trim()).join('\n')
 
 /**
  * 生成完整的HTML文件
+ * @param templateType 模板类型，对应 public/templates/ 目录下的文件名
  * @param templateVariables 模板变量
  * @param isPreview 是否为预览模式
  * @param title 页面标题
  * @param description 页面描述
  * @returns 生成的完整HTML字符串
+ * @example
+ * // 使用默认模板
+ * const html = await buildFullHtml('default', templateData)
+ * @example
+ * // 使用自定义模板
+ * const html = await buildFullHtml('vue3', templateData)
  */
 export const buildFullHtml = async (
+  templateType: string | 'default',
   templateVariables: {
     htmlContent: string
     cssContent: string
@@ -77,12 +86,41 @@ export const buildFullHtml = async (
   description?: string
 ): Promise<string> => {
   const { htmlContent, cssContent, jsContent, headHtmlContent = '', cssLinks = '', jsLinks = '' } = templateVariables
-  
+
   const pageTitle = title || 'CodeSandbox Preview'
   const pageDescription = description || 'A code sandbox preview page'
 
-  // 构建完整的HTML
-  const fullHtml = `
+  try {
+    // 构建模板文件路径
+    const templatePath = `/templates/${templateType}.html`
+    
+    // 获取模板文件内容
+    const response = await fetch(templatePath)
+    if (!response.ok) {
+      throw new Error(`无法加载模板文件: ${templatePath}`)
+    }
+    
+    let templateContent = await response.text()
+    
+    // 使用EJS渲染模板
+    const renderedHtml = await ejs.render(templateContent, {
+      title: pageTitle,
+      description: pageDescription,
+      htmlContent,
+      cssContent,
+      jsContent,
+      headHtmlContent,
+      cssLinks,
+      jsLinks,
+      isPreview
+    })
+    
+    return renderedHtml
+  } catch (error) {
+    console.error(`加载模板文件失败 (${templateType}):`, error)
+    
+    // 如果模板加载失败，回退到默认模板
+    const fallbackTemplate = `
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -99,17 +137,12 @@ export const buildFullHtml = async (
 <body>
     ${htmlContent}
     ${jsLinks}
-
-    ${isPreview ?
-      '<script>\n' +
-      '// 设置预览模式相关的逻辑\n' +
-      'console.log("Preview mode active");\n' +
-      jsContent +
-      '\n</script>' :
-      '<script>\n' + jsContent + '\n</script>'
-    }
+    <script>
+    ${isPreview ? '// 设置预览模式相关的逻辑\nconsole.log("Preview mode active");\n' : ''}
+    ${jsContent}
+    </script>
 </body>
-</html>
-`
-  return fullHtml
+</html>`
+    return fallbackTemplate
+  }
 }

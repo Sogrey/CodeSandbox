@@ -12,12 +12,14 @@
     </style>
   </head>
   <body>
-    <%- htmlContent %>
+    <div id="app">
+      <%- htmlContent %>
+    </div>
     <%- jsLinks %>
     <script>
     <% if (isPreview) { %>
       // 设置预览模式相关的逻辑
-      console.log("Preview mode active");
+      console.log("Vue3 Preview mode active");
     <% } %>
     <%= jsContent %>
     </script>

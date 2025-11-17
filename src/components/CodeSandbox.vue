@@ -187,6 +187,7 @@ import {
   parseDemoHtml,
   parseUrlCode,
   parseUrlPage,
+  parseTemplateType,
   checkUrlParams,
   saveSettings,
   getLanguageExtension,
@@ -229,6 +230,8 @@ const loadCodeMirror = async () => {
 
 // 文件列表
 const files = ref<FileInfo[]>([])
+
+const templateType = ref('default')
 
 // 初始化文件内容
 const initFiles = async () => {
@@ -493,7 +496,7 @@ const runCode = async () => {
     jsLinks: generateJsLinks(jsLinks.value)
   }
 
-  const fullHtml = await buildFullHtml(templateVariables, true, pageTitle.value, pageDescription.value)
+  const fullHtml = await buildFullHtml(templateType.value, templateVariables, true, pageTitle.value, pageDescription.value)
 
   // 使用 srcdoc 属性安全地设置 iframe 内容
   previewFrame.value.srcdoc = fullHtml
@@ -522,7 +525,7 @@ const downloadFullHtml = async () => {
     jsLinks: generateJsLinks(jsLinks.value)
   }
 
-  const fullHtml = await buildFullHtml(templateVariables, false, pageTitle.value, pageDescription.value)
+  const fullHtml = await buildFullHtml(templateType.value, templateVariables, false, pageTitle.value, pageDescription.value)
 
   // 下载完整HTML文件
   downloadHtml(fullHtml, pageTitle.value ? `${pageTitle.value}-full.html` : 'code-sandbox-full.html')
@@ -641,6 +644,8 @@ const togglePreviewMode = () => {
 
 // 初始化编辑器
 onMounted(async () => {
+
+  templateType.value = await parseTemplateType()
   // 首先初始化文件内容
   await initFiles()
 

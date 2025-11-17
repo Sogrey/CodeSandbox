@@ -169,7 +169,16 @@ export const parseUrlCode = (): {
     }
   } catch (error) {
     console.error('解析URL参数失败:', error)
-    return null
+    return {
+      html: "",
+      css: "",
+      js: "",
+      headHtmlContent: "",
+      cssLinks: [],
+      jsLinks: [],
+      title: 'CodeSandbox Preview',
+      description: 'A code sandbox preview page'
+    }
   }
 }
 
@@ -220,7 +229,7 @@ export const parseTemplateType = async (): Promise<string> => {
 /**
  * 解析HTML文件内容
  */
-export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{
+export interface ParseDemoHtmlResult {
   html: string;
   css: string;
   js: string;
@@ -228,11 +237,18 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{
   cssLinks: string[];
   jsLinks: string[];
   title: string;
-  description: string
-}> => {
+  description: string;
+  templateType?: string;
+}
+
+export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<ParseDemoHtmlResult> => {
   try {
     const response = await fetch(fileUrl)
     const content = await response.text()
+
+    // 提取模板类型
+    const typeMatch = content.match(/<type>([\s\S]*?)<\/type>/)
+    const templateType = typeMatch ? typeMatch[1]?.trim() : undefined
 
     // 提取 template 部分
     const templateMatch = content.match(/<template>([\s\S]*?)<\/template>/)
@@ -285,7 +301,8 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{
       cssLinks,
       jsLinks,
       title,
-      description
+      description,
+      templateType
     }
   } catch (error) {
     console.error('读取 demo.html 失败:', error)
@@ -297,7 +314,8 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<{
       cssLinks: [],
       jsLinks: [],
       title: 'CodeSandbox Preview',
-      description: 'A code sandbox preview page'
+      description: 'A code sandbox preview page',
+      templateType: undefined
     }
   }
 }

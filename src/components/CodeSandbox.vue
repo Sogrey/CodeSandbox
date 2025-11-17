@@ -80,7 +80,9 @@
           <div class="preview-header">
             <span>{{ pageTitle }}: {{ pageDescription }}</span>
           </div>
-          <iframe ref="previewFrame" class="preview-frame" sandbox="allow-scripts"></iframe>
+          <iframe ref="previewFrame" class="preview-frame"
+            :sandbox="templateType === 'mars3d' ? '' : 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-top-navigation-by-user-activation allow-downloads allow-upload'">
+          </iframe>
 
           <!-- 编辑/预览模式切换按钮 -->
           <button class="preview-mode-toggle" @click="togglePreviewMode" :title="isPreviewMode ? '切换到编辑模式' : '切换到预览模式'">
@@ -317,7 +319,12 @@ const initFiles = async () => {
 
   // 如果没有URL参数或参数解析失败，则从demo.html文件加载默认内容
   console.log('未检测到有效URL参数，加载默认模板内容')
-  const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = await parseDemoHtml()
+  const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription, templateType: parsedTemplateType } = await parseDemoHtml('./demo.html')
+
+  // 设置模板类型
+  if (parsedTemplateType) {
+    templateType.value = parsedTemplateType
+  }
 
   files.value = [
     {

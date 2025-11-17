@@ -80,8 +80,7 @@
           <div class="preview-header">
             <span>{{ pageTitle }}: {{ pageDescription }}</span>
           </div>
-          <iframe ref="previewFrame" class="preview-frame"
-            :sandbox="templateType === 'mars3d' ? '' : 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-top-navigation-by-user-activation allow-downloads allow-upload'">
+          <iframe ref="previewFrame" class="preview-frame">
           </iframe>
 
           <!-- 编辑/预览模式切换按钮 -->

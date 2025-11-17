@@ -1,4 +1,5 @@
 // 模板生成器
+import Mustache from 'mustache'
 
 /**
  * 生成扩展的HTML模板文件
@@ -73,7 +74,7 @@ ${jsLinks.filter(link => link.trim() !== '').map(link => link.trim()).join('\n')
  * const html = await buildFullHtml('vue3', templateData)
  */
 /**
- * 渲染模板内容
+ * 渲染模板内容（使用 Mustache 引擎）
  * @param template 模板字符串
  * @param variables 模板变量对象
  * @returns 渲染后的HTML字符串
@@ -82,37 +83,31 @@ const renderTemplate = (
   template: string,
   variables: Record<string, any>
 ): string => {
-  let result = template
-
-  // 替换所有变量占位符 {{variable}} 和 <%= variable %>
-  for (const [key, value] of Object.entries(variables)) {
-    // 替换 <%= variable %> 格式
-    result = result.replace(new RegExp(`<%=\\s*${key}\\s*>`, 'g'), value || '')
-    // 替换 {{ variable }} 格式（兼容旧的模板格式）
-    result = result.replace(new RegExp(`{{\\s*${key}\\s*}}`, 'g'), value || '')
-  }
-
-  // 处理 <%- %> 格式（不转义HTML，适用于HTML内容）
-  for (const [key, value] of Object.entries(variables)) {
-    result = result.replace(new RegExp(`<%-\\s*${key}\\s*>`, 'g'), value || '')
-  }
-
-  // 处理条件语句 <% if (condition) { %> ... <% } %>
-  result = result.replace(
+  // 预处理模板：将 <%= %> 和 <%- %> 转换为 Mustache 语法
+  let processedTemplate = template
+  
+  // 转换 <%= variable %> 为 {{variable}}（转义输出）
+  processedTemplate = processedTemplate.replace(/<%=\s*(\w+)\s*%>/g, '{{$1}}')
+  
+  // 转换 <%- variable %> 为 {{{variable}}}（不转义输出）
+  processedTemplate = processedTemplate.replace(/<%-\s*(\w+)\s*%>/g, '{{$1}}')
+  
+  // 处理条件语句：<% if (condition) { %> ... <% } %>
+  processedTemplate = processedTemplate.replace(
     /<%\s*if\s*\(([^)]+)\)\s*%>([\s\S]*?)<%\s*}\s*%>/g,
     (match, condition, content) => {
-      try {
-        // 简单的条件评估（注意：生产环境中应该使用更安全的方法）
-        const evaluated = new Function('variables', `with(variables) { return ${condition} }`)(variables)
-        return evaluated ? content : ''
-      } catch (error) {
-        console.warn('Failed to evaluate template condition:', condition, error)
-        return content // 如果条件评估失败，返回原内容
-      }
+      // Mustache 条件语法：{{#condition}} ... {{/condition}}
+      return `{{#${condition}}}${content}{{/${condition}}`
     }
   )
 
-  return result
+  // 使用 Mustache 渲染模板
+  try {
+    return Mustache.render(processedTemplate, variables)
+  } catch (error) {
+    console.error('模板渲染失败:', error)
+    throw error
+  }
 }
 
 /**

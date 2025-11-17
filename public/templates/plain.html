@@ -3,23 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= title %></title>
-    <meta name="description" content="<%= description %>" />
-    <%- headHtmlContent %>
-    <%- cssLinks %>
+    <title>{{title}}</title>
+    <meta name="description" content="{{description}}" />
+    {{{headHtmlContent}}}
+    {{{cssLinks}}}
     <style>
-      <%= cssContent %>
+      {{cssContent}}
     </style>
   </head>
   <body>
-    <%- htmlContent %>
-    <%- jsLinks %>
+    {{{htmlContent}}}
+    {{{jsLinks}}}
     <script>
-    <% if (isPreview) { %>
+    {{#isPreview}}
       // 设置预览模式相关的逻辑
       console.log("Plain HTML Preview mode active");
-    <% } %>
-    <%= jsContent %>
+    {{/isPreview}}
+    {{jsContent}}
     </script>
   </body>
 </html>

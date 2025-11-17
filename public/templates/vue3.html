@@ -3,25 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= title %></title>
-    <meta name="description" content="<%= description %>" />
-    <%- headHtmlContent %>
-    <%- cssLinks %>
+    <title>{{title}}</title>
+    <meta name="description" content="{{description}}" />
+    {{{headHtmlContent}}}
+    {{{cssLinks}}}
     <style>
-      <%= cssContent %>
+      {{cssContent}}
     </style>
   </head>
   <body>
     <div id="app">
-      <%- htmlContent %>
+      {{{htmlContent}}}
     </div>
-    <%- jsLinks %>
+    {{{jsLinks}}}
     <script>
-    <% if (isPreview) { %>
+    {{#isPreview}}
       // 设置预览模式相关的逻辑
       console.log("Vue3 Preview mode active");
-    <% } %>
-    <%= jsContent %>
+    {{/isPreview}}
+    {{jsContent}}
     </script>
   </body>
 </html>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import TheWelcome from '../components/TheWelcome.vue'
+import CodeSandbox from '../components/CodeSandbox.vue'
 </script>
 
 <template>
   <main>
-    <TheWelcome />
+    <CodeSandbox />
   </main>
 </template>

@@ -1096,6 +1096,8 @@ onUnmounted(() => {
     flex: 1;
     width: 100%;
     font-family: 'Monaco', 'Courier New', monospace;
+    overflow-y: scroll;
+    scrollbar-width: none;
   }
 }
 

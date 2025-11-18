@@ -441,8 +441,18 @@ export const parseUrlPage = async (): Promise<ParsedExampleData | null> => {
 
     if (!pageParam) return null
 
-    // 使用指定的模板数据页URL
-    return await parseDemoHtml(pageParam)
+    // 解码URL参数，处理浏览器自动编码的情况
+    let decodedPageParam
+    try {
+      decodedPageParam = decodeURIComponent(pageParam)
+      console.log('URL page参数解码:', pageParam, '→', decodedPageParam)
+    } catch (decodeError) {
+      console.warn('URL page参数解码失败，使用原始值:', decodeError)
+      decodedPageParam = pageParam
+    }
+
+    // 使用解码后的模板数据页URL
+    return await parseDemoHtml(decodedPageParam)
   } catch (error) {
     console.error('解析URL page参数失败:', error)
     return null
@@ -461,7 +471,19 @@ export const parseUrlPage = async (): Promise<ParsedExampleData | null> => {
 export const parseEngineType = async (): Promise<string> => {
   try {
     const urlParams = new URLSearchParams(window.location.search)
-    return urlParams.get('type') ?? 'default'
+    const typeParam = urlParams.get('type')
+
+    if (!typeParam) return 'default'
+
+    // 解码URL参数，处理浏览器自动编码的情况
+    try {
+      const decodedTypeParam = decodeURIComponent(typeParam)
+      console.log('URL type参数解码:', typeParam, '→', decodedTypeParam)
+      return decodedTypeParam
+    } catch (decodeError) {
+      console.warn('URL type参数解码失败，使用原始值:', decodeError)
+      return typeParam
+    }
   } catch (error) {
     console.error('解析URL type参数失败:', error)
     return 'default'

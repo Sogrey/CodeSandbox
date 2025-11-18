@@ -134,6 +134,23 @@ http://yourdomain.com/?page=/examples/demo1.html
 - **Code参数优先**：如果同时存在 `code` 和 `page` 参数，优先使用 `code` 参数
 - **默认模式**：无参数时加载默认的 `demo.html` 模板
 
+### URL自动解码支持
+
+系统支持浏览器自动编码的URL参数解码：
+
+```javascript
+// 浏览器编码后的URL也能正确解析
+https://sogrey.top/CodeSandbox/?type=mars3d&page=.%2Fexamples%2Fmars3d%2Fdefault.html
+// 自动解码为：
+type="mars3d", page="./examples/mars3d/default.html"
+```
+
+**特点**：
+- 自动检测并解码浏览器编码的URL参数
+- 支持百分号编码（%2F → /, %2E → .）
+- 解码失败时自动回退到原始值
+- 完整的错误处理和调试日志
+
 ### 示例模板位置
 
 模板文件应放置在 `public/examples/` 目录下，支持以下结构：
@@ -246,6 +263,12 @@ public/
 2. **URL传输**：加密数据通过URL参数安全传递到预览页面
 3. **解密阶段**：Base64解码 → UTF-8解码 → XOR解密 → 原始内容
 4. **渲染阶段**：资源加载 → HTML渲染 → CSS应用 → 用户脚本执行
+
+#### URL参数自动解码
+- **自动解码**：系统自动检测并解码浏览器编码的URL参数
+- **编码支持**：支持百分号编码（%2F → /, %2E → .）
+- **错误处理**：解码失败时自动回退到原始值
+- **调试支持**：提供详细的解码过程日志
 
 ## 🎨 主题支持
 

@@ -179,7 +179,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import jsBeautify from 'js-beautify'
 import { buildFullHtml, generateExtendedTemplate } from '@/utils/templateGenerator'
-import type { TemplateVariables } from '@/utils/templateGenerator'
+import type { ParsedExampleData } from '@/utils/componentHelpers'
 import {
   getCurrentFile,
   getFileContents,
@@ -188,7 +188,7 @@ import {
   parseDemoHtml,
   parseUrlCode,
   parseUrlPage,
-  parseTemplateType,
+  parseEngineType,
   checkUrlParams,
   saveSettings,
   getLanguageExtension,
@@ -196,7 +196,9 @@ import {
   removeCssLink,
   addJsLink,
   removeJsLink,
-  downloadHtml
+  downloadHtml,
+  encryptContent,
+  decryptContent
 } from '@/utils/componentHelpers'
 import type { FileInfo } from '@/utils/componentHelpers'
 
@@ -231,139 +233,62 @@ const loadCodeMirror = async () => {
 
 // 文件列表
 const files = ref<FileInfo[]>([])
-
-const templateType = ref('default')
+// 当前引擎类型
+const currentEngineType = ref('default')
 
 // 初始化文件内容
 const initFiles = async () => {
   // 检查URL参数类型
   const paramType = checkUrlParams()
 
-  if (paramType === 'code') {
-    // 处理code参数：从URL参数中加载代码内容
-    const urlCodeData = parseUrlCode()
+  let parsedData: ParsedExampleData | null
 
-    if (urlCodeData) {
-      // 使用URL参数中的代码内容 - 完全基于URL参数，不加载其他模板数据
-      const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = urlCodeData
-
-      files.value = [
-        {
-          name: 'index.html',
-          language: 'html',
-          content: html || '<div>请编写你的HTML代码</div>'
-        },
-        {
-          name: 'style.css',
-          language: 'css',
-          content: css || '/* 请编写你的CSS样式 */'
-        },
-        {
-          name: 'script.js',
-          language: 'javascript',
-          content: js || '// 请编写你的JavaScript代码'
-        }
-      ]
-
-      // 更新设置状态 - 仅使用URL参数中的设置数据
-      headHtmlContent.value = parsedHeadHtml || ''
-      cssLinks.value = parsedCssLinks.length > 0 ? parsedCssLinks : ['']
-      jsLinks.value = parsedJsLinks.length > 0 ? parsedJsLinks : ['']
-
-      // 更新标题和描述
-      pageTitle.value = parsedTitle || 'CodeSandbox Preview'
-      pageDescription.value = parsedDescription || 'A code sandbox preview page'
-
+  switch (paramType?.toLowerCase()) {
+    case 'code':
+      // 处理code参数：从URL参数中加载代码内容
+      parsedData = parseUrlCode()
       console.log('从URL参数加载代码内容成功，跳过默认模板加载')
-      return
-    }
-  } else if (paramType === 'page') {
-    // 处理page参数：从指定的模板数据页URL加载内容
-    const pageData = await parseUrlPage()
-
-    if (pageData) {
-      const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription } = pageData
-
-      files.value = [
-        {
-          name: 'index.html',
-          language: 'html',
-          content: html || '<div>请编写你的HTML代码</div>'
-        },
-        {
-          name: 'style.css',
-          language: 'css',
-          content: css || '/* 请编写你的CSS样式 */'
-        },
-        {
-          name: 'script.js',
-          language: 'javascript',
-          content: js || '// 请编写你的JavaScript代码'
-        }
-      ]
-
-      // 更新设置状态
-      headHtmlContent.value = parsedHeadHtml || ''
-      cssLinks.value = parsedCssLinks.length > 0 ? parsedCssLinks : ['']
-      jsLinks.value = parsedJsLinks.length > 0 ? parsedJsLinks : ['']
-
-      // 更新标题和描述
-      pageTitle.value = parsedTitle || 'CodeSandbox Preview'
-      pageDescription.value = parsedDescription || 'A code sandbox preview page'
-
+      break;
+    case 'page':
+      // 处理page参数：从指定的模板数据页URL加载内容
+      parsedData = await parseUrlPage()
       console.log('从指定模板数据页加载代码内容成功')
-      return
-    }
+      break;
+    default:
+      parsedData = await parseDemoHtml('./examples/default/default.html')
+      console.log('未检测到有效URL参数，加载默认模板内容')
+      break;
   }
-
-  // 如果没有URL参数或参数解析失败，则从demo.html文件加载默认内容
-  console.log('未检测到有效URL参数，加载默认模板内容')
-  const { html, css, js, headHtmlContent: parsedHeadHtml, cssLinks: parsedCssLinks, jsLinks: parsedJsLinks, title: parsedTitle, description: parsedDescription, templateType: parsedTemplateType } = await parseDemoHtml('./demo.html')
 
   // 设置模板类型
-  if (parsedTemplateType) {
-    templateType.value = parsedTemplateType
-  }
+  currentEngineType.value = parsedData!.engineType || 'default'
 
   files.value = [
     {
       name: 'index.html',
       language: 'html',
-      content: html
+      content: parsedData!.html || '<div>请编写你的HTML代码</div>'
     },
     {
       name: 'style.css',
       language: 'css',
-      content: css
+      content: parsedData!.css || '/* 请编写你的CSS样式 */'
     },
     {
       name: 'script.js',
       language: 'javascript',
-      content: js
+      content: parsedData!.js || '// 请编写你的JavaScript代码'
     }
   ]
 
-  // 如果模板文件中包含设置数据，则更新组件的设置状态
-  if (parsedHeadHtml) {
-    headHtmlContent.value = parsedHeadHtml
-  }
-
-  if (parsedCssLinks.length > 0) {
-    cssLinks.value = parsedCssLinks
-  }
-
-  if (parsedJsLinks.length > 0) {
-    jsLinks.value = parsedJsLinks
-  }
+  // 更新设置状态 - 仅使用URL参数中的设置数据
+  headHtmlContent.value = parsedData!.headHtmlContent || ''
+  cssLinks.value = parsedData!.cssLinks.length > 0 ? parsedData!.cssLinks : ['']
+  jsLinks.value = parsedData!.jsLinks.length > 0 ? parsedData!.jsLinks : ['']
 
   // 更新标题和描述
-  if (parsedTitle) {
-    pageTitle.value = parsedTitle
-  }
-
-  if (parsedDescription) {
-    pageDescription.value = parsedDescription
-  }
+  pageTitle.value = parsedData!.title || 'CodeSandbox Preview'
+  pageDescription.value = parsedData!.description || 'A code sandbox preview page'
 }
 
 const currentFile = ref('script.js') // 当前编辑的文件名
@@ -449,31 +374,38 @@ const formatCode = () => {
     let formatted = file.content
 
     try {
-      if (file.language === 'html') {
-        formatted = jsBeautify.html(formatted, {
-          indent_size: 2,
-          indent_char: ' ',
-          max_preserve_newlines: 1,
-          preserve_newlines: true,
-          indent_scripts: 'normal',
-          end_with_newline: false,
-          indent_inner_html: false
-        })
-      } else if (file.language === 'css') {
-        formatted = jsBeautify.css(formatted, {
-          indent_size: 2,
-          indent_char: ' ',
-          selector_separator_newline: true,
-          newline_between_rules: true,
-          preserve_newlines: true
-        })
-      } else if (file.language === 'javascript') {
-        formatted = jsBeautify.js(formatted, {
-          indent_size: 2,
-          indent_char: ' ',
-          preserve_newlines: true,
-          brace_style: 'collapse'
-        })
+      switch (file.language.toLowerCase()) {
+        case 'html':
+          formatted = jsBeautify.html(formatted, {
+            indent_size: 2,
+            indent_char: ' ',
+            max_preserve_newlines: 1,
+            preserve_newlines: true,
+            indent_scripts: 'normal',
+            end_with_newline: false,
+            indent_inner_html: false
+          })
+          break;
+        case 'css':
+          formatted = jsBeautify.css(formatted, {
+            indent_size: 2,
+            indent_char: ' ',
+            selector_separator_newline: true,
+            newline_between_rules: true,
+            preserve_newlines: true
+          })
+          break;
+        case 'javascript':
+        case 'js':
+          formatted = jsBeautify.js(formatted, {
+            indent_size: 2,
+            indent_char: ' ',
+            preserve_newlines: true,
+            brace_style: 'collapse'
+          })
+          break;
+        default:
+          break;
       }
 
       file.content = formatted
@@ -490,22 +422,27 @@ const formatCode = () => {
 const runCode = async () => {
   if (!previewFrame.value) return
 
+  // 获取当前编辑内容
   const { htmlContent, cssContent, jsContent } = getFileContents(files.value)
 
-  // 构建模板变量，包含设置内容
-  const templateVariables: TemplateVariables = {
-    htmlContent,
-    cssContent,
-    jsContent,
+  const data: ParsedExampleData = {
+    engineType: currentEngineType.value,
+    html: htmlContent,
+    css: cssContent,
+    js: jsContent,
+    title: pageTitle.value,
+    description: pageDescription.value,
     headHtmlContent: headHtmlContent.value,
-    cssLinks: generateCssLinks(cssLinks.value),
-    jsLinks: generateJsLinks(jsLinks.value)
+    cssLinks: cssLinks.value,
+    jsLinks: jsLinks.value
   }
 
-  const fullHtml = await buildFullHtml(templateType.value, templateVariables, true, pageTitle.value, pageDescription.value)
+  // 对数据进行加密处理
+  const jsonData = JSON.stringify(data)
+  const content = encryptContent(jsonData)
+  previewFrame.value.src = `./previews/${data.engineType}/default.html?content=${content}`
 
-  // 使用 srcdoc 属性安全地设置 iframe 内容
-  previewFrame.value.srcdoc = fullHtml
+  // 解密在 public\previews\index.js
 }
 
 // 保存设置
@@ -519,37 +456,29 @@ const handleSaveSettings = () => {
 
 // 下载完整HTML代码
 const downloadFullHtml = async () => {
+  // 获取当前编辑内容
   const { htmlContent, cssContent, jsContent } = getFileContents(files.value)
 
-  // 构建模板变量，包含设置内容
-  const templateVariables: TemplateVariables = {
-    htmlContent,
-    cssContent,
-    jsContent,
-    headHtmlContent: headHtmlContent.value ?? '',
-    cssLinks: generateCssLinks(cssLinks.value),
-    jsLinks: generateJsLinks(jsLinks.value)
+  const data: ParsedExampleData = {
+    engineType: currentEngineType.value,
+    html: htmlContent,
+    css: cssContent,
+    js: jsContent,
+    title: pageTitle.value,
+    description: pageDescription.value,
+    headHtmlContent: headHtmlContent.value,
+    cssLinks: cssLinks.value,
+    jsLinks: jsLinks.value
   }
 
-  const fullHtml = await buildFullHtml(templateType.value, templateVariables, false, pageTitle.value, pageDescription.value)
-
+  const fullHtml = await buildFullHtml(data)
   // 下载完整HTML文件
-  downloadHtml(fullHtml, pageTitle.value ? `${pageTitle.value}-full.html` : 'code-sandbox-full.html')
+  downloadHtml(fullHtml, data.title ? `${data.title}.html` : 'code-sandbox.html')
 
   // 下载扩展的HTML模板文件（包含所有编辑和设置数据）
-  const templateHtml = generateExtendedTemplate(
-    templateType.value,
-    htmlContent,
-    cssContent,
-    jsContent,
-    headHtmlContent.value,
-    cssLinks.value,
-    jsLinks.value,
-    pageTitle.value,
-    pageDescription.value
-  )
+  const templateHtml = generateExtendedTemplate(data)
 
-  downloadHtml(templateHtml, pageTitle.value ? `${pageTitle.value}-template.html` : 'code-sandbox-template.html')
+  downloadHtml(templateHtml, data.title ? `${data.title}-template.html` : 'code-sandbox-template.html')
 }
 
 // 显示分享弹窗
@@ -568,24 +497,26 @@ const generateShareUrl = () => {
   // 获取当前编辑内容
   const { htmlContent, cssContent, jsContent } = getFileContents(files.value)
 
-  // 生成扩展的HTML模板内容
-  const templateContent = generateExtendedTemplate(
-    templateType.value,
-    htmlContent,
-    cssContent,
-    jsContent,
-    headHtmlContent.value,
-    cssLinks.value,
-    jsLinks.value,
-    pageTitle.value,
-    pageDescription.value
-  )
+  const data: ParsedExampleData = {
+    engineType: currentEngineType.value,
+    html: htmlContent,
+    css: cssContent,
+    js: jsContent,
+    title: pageTitle.value,
+    description: pageDescription.value,
+    headHtmlContent: headHtmlContent.value,
+    cssLinks: cssLinks.value,
+    jsLinks: jsLinks.value
+  }
 
-  // 对内容进行Base64编码（加密编码）
-  const encodedContent = btoa(encodeURIComponent(templateContent))
+  // 生成扩展的HTML模板内容
+  const templateContent = generateExtendedTemplate(data)
+
+  // 对内容进行加密处理（XOR + Base64双重保护）
+  const encryptedContent = encryptContent(templateContent)
 
   // 生成带参数的分享链接
-  shareUrl.value = `${currentUrl.value}?code=${encodedContent}`
+  shareUrl.value = `${currentUrl.value}?code=${encryptedContent}`
 }
 
 // 复制分享链接
@@ -653,7 +584,7 @@ const togglePreviewMode = () => {
 // 初始化编辑器
 onMounted(async () => {
 
-  templateType.value = await parseTemplateType()
+  currentEngineType.value = await parseEngineType()
   // 首先初始化文件内容
   await initFiles()
 

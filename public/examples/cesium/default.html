@@ -1,0 +1,36 @@
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>cesium</engine-type>
+<title>Cesium 示例</title>
+<meta name="description" content="这是一个简单 Cesium 示例" />
+<template>
+  <div id="cesiumContainer"></div>
+</template>
+<script>
+  var viewer = new Cesium.Viewer('cesiumContainer')
+
+  console.log(viewer)
+</script>
+<style>
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(270deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+  }
+
+  #cesiumContainer {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+  <head-metadata> </head-metadata>
+  <css-links> </css-links>
+  <js-links> </js-links>
+</settings>

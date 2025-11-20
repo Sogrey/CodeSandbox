@@ -88,42 +88,66 @@ npm run lint
 ## 🎯 项目结构
 
 ```
-├── src/
-│   ├── components/          # Vue 组件
-│   │   └── CodeSandbox.vue     # 主编辑器组件
-│   ├── utils/              # 工具函数
-│   │   ├── componentHelpers.ts  # 组件辅助工具函数
-│   │   └── templateGenerator.ts # 模板生成器
-│   └── main.ts             # 应用入口
-├── public/                # 静态资源
+├── src/                     # 源代码目录
+│   ├── components/           # Vue 组件
+│   │   └── CodeSandbox.vue  # 主编辑器组件
+│   ├── utils/               # 工具函数
+│   │   ├── componentHelpers.ts   # 组件辅助工具函数
+│   │   └── templateGenerator.ts  # 模板生成器
+│   ├── views/               # 页面视图
+│   │   └── HomeView.vue     # 首页视图
+│   ├── router/              # Vue Router
+│   │   └── index.ts         # 路由配置
+│   ├── assets/              # 静态资源
+│   │   ├── main.css         # 主样式文件
+│   │   ├── normalize.css    # CSS重置文件
+│   │   └── logo.svg         # 项目Logo
+│   ├── App.vue              # 根组件
+│   └── main.ts              # 应用入口
+├── public/                  # 公共资源目录
 │   ├── libs/               # 第三方库文件
-│   │   ├── Cesium/        # Cesium 3D库
-│   │   ├── Three.js/      # Three.js 3D库
-│   │   └── ...
+│   │   ├── Cesium/        # Cesium 3D地图库
+│   │   └── Three.js/      # Three.js 3D图形库
 │   ├── templates/          # 模板引擎文件
-│   │   ├── default.html   # 默认模板
-│   │   ├── mars3d.html   # Mars3D模板
-│   │   └── three.js.html # Three.js模板
+│   │   ├── default.html   # 默认引擎模板
+│   │   ├── cesium.html    # Cesium引擎模板
+│   │   └── three.js.html # Three.js引擎模板
 │   ├── previews/           # 预览页面文件夹
 │   │   ├── index.js       # 通用预览页面脚本
 │   │   ├── default/       # 默认引擎预览
-│   │   ├── mars3d/       # Mars3D引擎预览
+│   │   ├── cesium/        # Cesium引擎预览
 │   │   └── three.js/     # Three.js引擎预览
-│   └── examples/          # 模板示例文件夹
-│       ├── default/       # 默认示例
-│       ├── cesium/        # Cesium示例
-│       ├── mars3d/        # Mars3D示例
-│       └── three.js/      # Three.js示例
-├── env.d.ts              # TypeScript环境声明
-├── eslint.config.ts       # ESLint配置
-├── index.html           # 应用入口HTML
-├── package.json         # 项目配置
-├── pnpm-lock.yaml      # 依赖锁定文件
-├── tsconfig.app.json    # 应用TypeScript配置
-├── tsconfig.json       # 基础TypeScript配置
-├── tsconfig.node.json   # Node.js TypeScript配置
-├── vite.config.ts      # Vite构建配置
-└── README.md           # 项目文档
+│   ├── examples/          # 示例数据文件夹
+│   │   ├── default/       # 默认示例
+│   │   ├── cesium/        # Cesium示例
+│   │   └── three.js/     # Three.js示例
+│   ├── demo.html           # 演示页面
+│   └── favicon.ico         # 网站图标
+├── .github/                # GitHub Actions
+│   └── workflows/          # 工作流配置
+│       └── deploy.yml      # 自动部署配置
+├── .codebuddy/             # 开发助手配置
+│   └── commands/          # 自定义命令
+├── dist/                   # 构建输出目录
+│   ├── assets/           # 构建资源文件
+│   ├── examples/          # 构建后的示例文件
+│   ├── libs/             # 构建后的库文件
+│   ├── previews/         # 构建后的预览文件
+│   └── templates/        # 构建后的模板文件
+├── env.d.ts               # TypeScript环境声明
+├── .editorconfig           # 编辑器配置
+├── .gitattributes         # Git属性配置
+├── .gitignore            # Git忽略文件
+├── .prettierrc.json      # Prettier格式化配置
+├── eslint.config.ts        # ESLint代码检查配置
+├── index.html            # 应用入口HTML
+├── package.json          # 项目配置和依赖
+├── pnpm-lock.yaml       # 依赖锁定文件
+├── tsconfig.app.json     # 应用TypeScript配置
+├── tsconfig.json        # 基础TypeScript配置
+├── tsconfig.node.json    # Node.js TypeScript配置
+├── vite.config.ts       # Vite构建配置
+└── README.md            # 项目文档
 ```
 
 ## 🔗 URL参数使用指南
@@ -288,7 +312,7 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
 
 **支持的引擎类型**：
 - `default` - 默认HTML引擎
-- `mars3d` - Mars3D 3D地图引擎
+- `cesium` - Cesium 3D地图引擎
 - `three.js` - Three.js 3D图形引擎
 
 ### 示例模板位置
@@ -299,12 +323,10 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
 public/
 ├── templates/             # 引擎模板文件夹
 │   ├── default.html       # 默认引擎模板
-│   ├── mars3d.html       # Mars3D引擎模板
+│   ├── cesium.html       # Cesium引擎模板
 │   └── three.js.html     # Three.js引擎模板
 ├── examples/             # 示例数据文件夹
 │   ├── default/           # 默认示例
-│   │   └── default.html
-│   ├── mars3d/           # Mars3D示例
 │   │   └── default.html
 │   ├── cesium/           # Cesium示例
 │   │   └── default.html
@@ -313,7 +335,6 @@ public/
 └── previews/             # 预览页面文件夹
     ├── index.js          # 通用预览脚本
     ├── default/          # 默认引擎预览
-    ├── mars3d/          # Mars3D引擎预览
     ├── cesium/          # Cesium引擎预览
     └── three.js/        # Three.js引擎预览
 ```

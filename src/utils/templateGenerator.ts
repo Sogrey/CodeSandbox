@@ -168,6 +168,7 @@ export const buildFullHtml = async (data: ParsedExampleData): Promise<string> =>
     ${generateJsLinks(jsLinks)}
 
     <script type="${jsType}">
+    <script${jsType === 'module' ? ' type="module"' : ''}>
     ${js}
     </script>
 </body>

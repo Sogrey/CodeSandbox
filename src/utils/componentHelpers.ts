@@ -455,7 +455,6 @@ export const parseUrlPage = async (): Promise<ParsedExampleData | null> => {
     let decodedPageParam
     try {
       decodedPageParam = decodeURIComponent(pageParam)
-      console.log('URL page参数解码:', pageParam, '→', decodedPageParam)
     } catch (decodeError) {
       console.warn('URL page参数解码失败，使用原始值:', decodeError)
       decodedPageParam = pageParam
@@ -488,7 +487,6 @@ export const parseEngineType = async (): Promise<string> => {
     // 解码URL参数，处理浏览器自动编码的情况
     try {
       const decodedTypeParam = decodeURIComponent(typeParam)
-      console.log('URL type参数解码:', typeParam, '→', decodedTypeParam)
       return decodedTypeParam
     } catch (decodeError) {
       console.warn('URL type参数解码失败，使用原始值:', decodeError)

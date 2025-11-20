@@ -4,6 +4,7 @@
 
 ## Live Demo
 
+- [Default](https://sogrey.top/CodeSandbox)
 - [Cesium](https://sogrey.top/CodeSandbox/?page=examples/cesium/default.html)
 - [Three.js](https://sogrey.top/CodeSandbox/?page=examples/three.js/default.html)
 
@@ -89,19 +90,40 @@ npm run lint
 ```
 ├── src/
 │   ├── components/          # Vue 组件
-│   │   └── TheWelcome.vue   # 主编辑器组件
+│   │   └── CodeSandbox.vue     # 主编辑器组件
 │   ├── utils/              # 工具函数
 │   │   ├── componentHelpers.ts  # 组件辅助工具函数
-│   │   ├── templateGenerator.ts # 模板生成器
-│   │   └── templateManager.ts   # 模板管理器
+│   │   └── templateGenerator.ts # 模板生成器
 │   └── main.ts             # 应用入口
 ├── public/                # 静态资源
-│   ├── demo.html           # 示例文件
+│   ├── libs/               # 第三方库文件
+│   │   ├── Cesium/        # Cesium 3D库
+│   │   ├── Three.js/      # Three.js 3D库
+│   │   └── ...
+│   ├── templates/          # 模板引擎文件
+│   │   ├── default.html   # 默认模板
+│   │   ├── mars3d.html   # Mars3D模板
+│   │   └── three.js.html # Three.js模板
 │   ├── previews/           # 预览页面文件夹
-│   │   └── index.js        # 预览页面解密和内容处理脚本
-│   └── examples/           # 模板示例文件夹
-│       └── demo1.html      # 示例模板文件
-└── package.json
+│   │   ├── index.js       # 通用预览页面脚本
+│   │   ├── default/       # 默认引擎预览
+│   │   ├── mars3d/       # Mars3D引擎预览
+│   │   └── three.js/     # Three.js引擎预览
+│   └── examples/          # 模板示例文件夹
+│       ├── default/       # 默认示例
+│       ├── cesium/        # Cesium示例
+│       ├── mars3d/        # Mars3D示例
+│       └── three.js/      # Three.js示例
+├── env.d.ts              # TypeScript环境声明
+├── eslint.config.ts       # ESLint配置
+├── index.html           # 应用入口HTML
+├── package.json         # 项目配置
+├── pnpm-lock.yaml      # 依赖锁定文件
+├── tsconfig.app.json    # 应用TypeScript配置
+├── tsconfig.json       # 基础TypeScript配置
+├── tsconfig.node.json   # Node.js TypeScript配置
+├── vite.config.ts      # Vite构建配置
+└── README.md           # 项目文档
 ```
 
 ## 🔗 URL参数使用指南
@@ -170,23 +192,28 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{title}}</title>
     <meta name="description" content="{{{description}}}" />
-    {{{headHtmlContent}}}
-    {{{cssLinks}}}
+    {{{headHtmlContent}}} {{{cssLinks}}}
     <style>
       {{{cssContent}}}
     </style>
   </head>
   <body>
-    {{{htmlContent}}}
-    {{{jsLinks}}}
+    {{{htmlContent}}} {{{jsLinks}}}
     <script>
-    {{{jsContent}}}
+      {
+        {
+          {
+            jsContent
+          }
+        }
+      }
     </script>
   </body>
 </html>
 ```
 
 **支持变量**：
+
 - `{{title}}` - 页面标题（转义输出）
 - `{{{description}}}` - 页面描述（原样输出）
 - `{{{headHtmlContent}}}` - HTML head内容（meta标签等）
@@ -197,24 +224,104 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
 - `{{{jsContent}}}` - 用户JavaScript代码
 
 **安全特性**：
+
 - 转义输出防XSS攻击：`{{variable}}`
 - HTML结构保留：`{{{variable}}}`
 - 支持条件语句和循环结构
 - 浏览器兼容，无需Node.js依赖
 
+### 模板文件结构
+
+系统支持两种模板文件格式：
+
+#### 1. 引擎模板文件（templates/）
+用于预览页面的HTML结构模板：
+```html
+<!-- public/templates/default.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <title>{{title}}</title>
+    <meta name="description" content="{{{description}}}" />
+    {{{headHtmlContent}}}
+    {{{cssLinks}}}
+    <style>{{{cssContent}}}</style>
+  </head>
+  <body>
+    {{{htmlContent}}}
+    {{{jsLinks}}}
+    <script>{{{jsContent}}}</script>
+  </body>
+</html>
+```
+
+#### 2. 示例数据文件（examples/）
+包含完整示例数据和设置信息的模板：
+```html
+<!-- public/examples/default/default.html -->
+<engine-type>default</engine-type>
+<title>通用示例</title>
+<meta name="description" content="这是一个简单通用示例" />
+
+<template>
+  <h3>Hello World</h3>
+</template>
+
+<script></script>
+
+<style>
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(270deg, #667eea 0%, #764ba2 100%);
+  }
+</style>
+
+<settings>
+  <head-metadata></head-metadata>
+  <css-links></css-links>
+  <js-links></js-links>
+</settings>
+```
+
+**支持的引擎类型**：
+- `default` - 默认HTML引擎
+- `mars3d` - Mars3D 3D地图引擎
+- `three.js` - Three.js 3D图形引擎
+
 ### 示例模板位置
 
-模板文件应放置在 `public/examples/` 目录下，支持以下结构：
+示例数据文件应放置在 `public/examples/` 目录下，支持以下结构：
 
 ```
 public/
-├── demo.html              # 默认模板
-└── examples/              # 示例模板文件夹
-    ├── demo1.html         # 示例模板1
-    ├── demo2.html         # 示例模板2
-    └── other/             # 子文件夹支持
-        └── template.html  # 嵌套模板
+├── templates/             # 引擎模板文件夹
+│   ├── default.html       # 默认引擎模板
+│   ├── mars3d.html       # Mars3D引擎模板
+│   └── three.js.html     # Three.js引擎模板
+├── examples/             # 示例数据文件夹
+│   ├── default/           # 默认示例
+│   │   └── default.html
+│   ├── mars3d/           # Mars3D示例
+│   │   └── default.html
+│   ├── cesium/           # Cesium示例
+│   │   └── default.html
+│   └── three.js/         # Three.js示例
+│       └── default.html
+└── previews/             # 预览页面文件夹
+    ├── index.js          # 通用预览脚本
+    ├── default/          # 默认引擎预览
+    ├── mars3d/          # Mars3D引擎预览
+    ├── cesium/          # Cesium引擎预览
+    └── three.js/        # Three.js引擎预览
 ```
+
+**文件用途说明**：
+- `templates/` - 引擎渲染模板，定义HTML结构
+- `examples/` - 示例数据文件，包含代码和设置
+- `previews/` - 预览页面，处理加密内容渲染
 
 ## 🔧 主要功能
 

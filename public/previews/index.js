@@ -163,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
     headHtmlContent,
     cssLinks,
     jsLinks,
+    jsType
   } = decryptedData;
 
   // 解密后的内容处理
@@ -283,6 +284,9 @@ document.addEventListener('DOMContentLoaded', () => {
           console.log('开始执行用户脚本...')
           const scriptElement = document.createElement('script')
           scriptElement.textContent = js
+          if (jsType && jsType === 'module') {
+            scriptElement.type = 'module'
+          }
           document.body.appendChild(scriptElement)
           console.log('用户脚本执行完成')
         } catch (error) {

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{title}}</title>
+    <meta name="description" content="{{{description}}}" />
+    {{{headHtmlContent}}} {{{cssLinks}}}
+    <style>
+      {{{cssContent}}}
+    </style>
+  </head>
+  <body>
+    {{{htmlContent}}} {{{jsLinks}}}
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "../../libs/Three.js/0.181.2/build/three.module.js",
+          "three/addons/": "../../libs/Three.js/0.181.2/jsm/"
+        }
+      }
+    </script>
+    <script type="{{{jsType}}}">
+      {{{jsContent}}}
+    </script>
+  </body>
+</html>

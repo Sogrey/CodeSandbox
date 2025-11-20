@@ -173,6 +173,7 @@ export interface ParsedExampleData {
   jsLinks: string[];
   title: string;
   description: string;
+  jsType: string;
 }
 
 /**
@@ -357,8 +358,15 @@ export const parseUrlCode = (): ParsedExampleData | null => {
     const htmlContent = templateMatch ? templateMatch[1]?.trim() : ''
 
     // 提取 script 部分
+    let jsType = '';
     const scriptMatch = decodedContent.match(/<script>([\s\S]*?)<\/script>/)
-    const jsContent = scriptMatch ? scriptMatch[1]?.trim() : ''
+    let jsContent = scriptMatch ? scriptMatch[1]?.trim() : ''
+
+    const scriptModuleMatch = decodedContent.match(/<script type="module">([\s\S]*?)<\/script>/)
+    if (scriptModuleMatch) {
+      jsType = 'module';
+      jsContent = scriptModuleMatch[1]?.trim()
+    }
 
     // 提取 style 部分
     const styleMatch = decodedContent.match(/<style>([\s\S]*?)<\/style>/)
@@ -404,7 +412,8 @@ export const parseUrlCode = (): ParsedExampleData | null => {
       cssLinks,
       jsLinks,
       title,
-      description
+      description,
+      jsType
     }
   } catch (error) {
     console.error('解析URL参数失败:', error)
@@ -417,7 +426,8 @@ export const parseUrlCode = (): ParsedExampleData | null => {
       cssLinks: [],
       jsLinks: [],
       title: '',
-      description: ''
+      description: '',
+      jsType: ''
     }
   }
 }
@@ -519,8 +529,15 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<Pa
     const htmlContent = templateMatch ? templateMatch[1]?.trim() : ''
 
     // 提取 script 部分
+    let jsType = '';
     const scriptMatch = content.match(/<script>([\s\S]*?)<\/script>/)
-    const jsContent = scriptMatch ? scriptMatch[1]?.trim() : ''
+    let jsContent = scriptMatch ? scriptMatch[1]?.trim() : ''
+
+    const scriptModuleMatch = content.match(/<script type="module">([\s\S]*?)<\/script>/)
+    if (scriptModuleMatch) {
+      jsType = 'module';
+      jsContent = scriptModuleMatch[1]?.trim()
+    }
 
     // 提取 style 部分
     const styleMatch = content.match(/<style>([\s\S]*?)<\/style>/)
@@ -566,7 +583,8 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<Pa
       cssLinks,
       jsLinks,
       title,
-      description
+      description,
+      jsType,
     }
   } catch (error) {
     console.error('读取 demo.html 失败:', error)
@@ -579,7 +597,8 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<Pa
       cssLinks: [],
       jsLinks: [],
       title: '',
-      description: ''
+      description: '',
+      jsType: '',
     }
   }
 }

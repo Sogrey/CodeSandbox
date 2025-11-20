@@ -183,8 +183,6 @@ import type { ParsedExampleData } from '@/utils/componentHelpers'
 import {
   getCurrentFile,
   getFileContents,
-  generateCssLinks,
-  generateJsLinks,
   parseDemoHtml,
   parseUrlCode,
   parseUrlPage,
@@ -197,8 +195,7 @@ import {
   addJsLink,
   removeJsLink,
   downloadHtml,
-  encryptContent,
-  decryptContent
+  encryptContent
 } from '@/utils/componentHelpers'
 import type { FileInfo } from '@/utils/componentHelpers'
 
@@ -235,6 +232,8 @@ const loadCodeMirror = async () => {
 const files = ref<FileInfo[]>([])
 // 当前引擎类型
 const currentEngineType = ref('default')
+// 当前js类型：'' 或 'moudle
+const currentJsType = ref('')
 
 // 初始化文件内容
 const initFiles = async () => {
@@ -262,6 +261,7 @@ const initFiles = async () => {
 
   // 设置模板类型
   currentEngineType.value = parsedData!.engineType || 'default'
+  currentJsType.value = parsedData!.jsType || ''
 
   files.value = [
     {
@@ -434,7 +434,8 @@ const runCode = async () => {
     description: pageDescription.value,
     headHtmlContent: headHtmlContent.value,
     cssLinks: cssLinks.value,
-    jsLinks: jsLinks.value
+    jsLinks: jsLinks.value,
+    jsType: currentJsType.value
   }
 
   // 对数据进行加密处理
@@ -468,7 +469,8 @@ const downloadFullHtml = async () => {
     description: pageDescription.value,
     headHtmlContent: headHtmlContent.value,
     cssLinks: cssLinks.value,
-    jsLinks: jsLinks.value
+    jsLinks: jsLinks.value,
+    jsType: currentJsType.value
   }
 
   const fullHtml = await buildFullHtml(data)
@@ -506,7 +508,8 @@ const generateShareUrl = () => {
     description: pageDescription.value,
     headHtmlContent: headHtmlContent.value,
     cssLinks: cssLinks.value,
-    jsLinks: jsLinks.value
+    jsLinks: jsLinks.value,
+    jsType: currentJsType.value
   }
 
   // 生成扩展的HTML模板内容

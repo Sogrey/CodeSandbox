@@ -47,7 +47,7 @@ export const generateExtendedTemplate = (data: ParsedExampleData): string => {
 <template>
 ${data.html}
 </template>
-<script>
+<script${data.jsType === 'module' ? ' type="module"' : ''}>
 ${data.js}
 </script>
 <style>
@@ -114,11 +114,11 @@ const renderTemplate = (
  * console.log(html) // 包含mars3d依赖的完整HTML页面
  */
 export const buildFullHtml = async (data: ParsedExampleData): Promise<string> => {
-  const { engineType, html, css, js, headHtmlContent, cssLinks, jsLinks, title, description } = data
+  const { engineType, html, css, js, headHtmlContent, cssLinks, jsLinks, title, description, jsType } = data
 
   const pageTitle = title || 'CodeSandbox Preview'
   const pageDescription = description || 'A code sandbox preview page'
-  debugger
+
   try {
     // 构建模板文件路径
     const templatePath = `./templates/${engineType}.html`
@@ -141,6 +141,7 @@ export const buildFullHtml = async (data: ParsedExampleData): Promise<string> =>
       headHtmlContent,
       cssLinks: generateCssLinks(cssLinks),
       jsLinks: generateJsLinks(jsLinks),
+      jsType
     })
 
     return renderedHtml
@@ -165,7 +166,8 @@ export const buildFullHtml = async (data: ParsedExampleData): Promise<string> =>
 <body>
     ${html}
     ${generateJsLinks(jsLinks)}
-    <script>
+
+    <script type="${jsType}">
     ${js}
     </script>
 </body>

@@ -1,0 +1,90 @@
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>three.js</engine-type>
+<title>Threee.js 示例</title>
+<meta name="description" content="这是一个简单 Three.js 示例" />
+<template>
+  <div id="Container"></div>
+</template>
+<script type="module">
+  import * as THREE from 'three'
+
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+
+  let camera, scene, renderer
+
+  init()
+
+  function init() {
+    scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x999999)
+
+    const light = new THREE.DirectionalLight(0xffffff, 3)
+    light.position.set(0.5, 1.0, 0.5).normalize()
+
+    scene.add(light)
+
+    camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 500)
+
+    camera.position.y = 5
+    camera.position.z = 10
+
+    scene.add(camera)
+
+    const grid = new THREE.GridHelper(50, 50, 0xffffff, 0x7b7b7b)
+    scene.add(grid)
+
+    renderer = new THREE.WebGLRenderer({
+      antialias: true,
+    })
+    renderer.setPixelRatio(window.devicePixelRatio)
+    renderer.setSize(window.innerWidth, window.innerHeight)
+    document.getElementById('Container').appendChild(renderer.domElement)
+
+    const controls = new OrbitControls(camera, renderer.domElement)
+    controls.addEventListener('change', render)
+    controls.update()
+
+    window.addEventListener('resize', onWindowResize)
+
+    render()
+  }
+
+  function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight
+    camera.updateProjectionMatrix()
+
+    renderer.setSize(window.innerWidth, window.innerHeight)
+
+    render()
+  }
+
+  function render() {
+    renderer.render(scene, camera)
+
+    window.requestAnimationFrame(render)
+  }
+</script>
+<style>
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(270deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+  }
+
+  #Container {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+  <head-metadata> </head-metadata>
+  <css-links> </css-links>
+  <js-links> </js-links>
+</settings>

@@ -2,6 +2,11 @@
 
 一个基于 Vue 3 + CodeMirror 6 的在线代码编辑器，支持 HTML、CSS 和 JavaScript 的实时预览，具备完整的模板导入导出功能，支持 URL 参数直接加载代码和模板页面。
 
+## Live Demo
+
+- [Cesium](https://sogrey.top/CodeSandbox/?page=examples/cesium/default.html)
+- [Three.js](https://sogrey.top/CodeSandbox/?page=examples/three.js/default.html)
+
 ## ✨ 特性
 
 - 🚀 **Vue 3 + TypeScript** - 现代化前端技术栈
@@ -140,16 +145,62 @@ http://yourdomain.com/?page=/examples/demo1.html
 
 ```javascript
 // 浏览器编码后的URL也能正确解析
-https://sogrey.top/CodeSandbox/?type=mars3d&page=.%2Fexamples%2Fmars3d%2Fdefault.html
+//sogrey.top/CodeSandbox/?type=mars3d&page=.%2Fexamples%2Fmars3d%2Fdefault.html
 // 自动解码为：
-type="mars3d", page="./examples/mars3d/default.html"
+https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
 ```
 
 **特点**：
+
 - 自动检测并解码浏览器编码的URL参数
 - 支持百分号编码（%2F → /, %2E → .）
 - 解码失败时自动回退到原始值
 - 完整的错误处理和调试日志
+
+### 模板引擎解析
+
+系统支持基于Mustache的模板引擎解析：
+
+```html
+<!-- default.html 模板结构 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{title}}</title>
+    <meta name="description" content="{{{description}}}" />
+    {{{headHtmlContent}}}
+    {{{cssLinks}}}
+    <style>
+      {{{cssContent}}}
+    </style>
+  </head>
+  <body>
+    {{{htmlContent}}}
+    {{{jsLinks}}}
+    <script>
+    {{{jsContent}}}
+    </script>
+  </body>
+</html>
+```
+
+**支持变量**：
+- `{{title}}` - 页面标题（转义输出）
+- `{{{description}}}` - 页面描述（原样输出）
+- `{{{headHtmlContent}}}` - HTML head内容（meta标签等）
+- `{{{cssLinks}}}` - CSS CDN链接集合
+- `{{{cssContent}}}` - 用户CSS代码
+- `{{{htmlContent}}}` - 用户HTML代码
+- `{{{jsLinks}}}` - JS CDN链接集合
+- `{{{jsContent}}}` - 用户JavaScript代码
+
+**安全特性**：
+- 转义输出防XSS攻击：`{{variable}}`
+- HTML结构保留：`{{{variable}}}`
+- 支持条件语句和循环结构
+- 浏览器兼容，无需Node.js依赖
 
 ### 示例模板位置
 
@@ -247,24 +298,28 @@ public/
 ### 数据加密与安全传输
 
 #### 加密机制
+
 - **XOR加密**：使用固定密钥进行数据混淆
 - **UTF-8编码**：正确处理Unicode字符，支持中英文混合内容
 - **URL-safe Base64**：确保数据在URL参数中安全传输
 - **多层回退机制**：确保系统稳定性和数据完整性
 
 #### 预览页面安全处理
+
 - **异步依赖加载**：智能加载第三方库，确保依赖顺序
 - **脚本执行优化**：等待第三方库完全加载后再执行用户脚本
 - **错误容错处理**：部分依赖加载失败不影响用户脚本执行
 - **内容安全解析**：完整支持HTML、CSS、JS内容的安全渲染
 
 #### 数据传输流程
+
 1. **加密阶段**：用户代码 → XOR加密 → UTF-8编码 → URL-safe Base64
 2. **URL传输**：加密数据通过URL参数安全传递到预览页面
 3. **解密阶段**：Base64解码 → UTF-8解码 → XOR解密 → 原始内容
 4. **渲染阶段**：资源加载 → HTML渲染 → CSS应用 → 用户脚本执行
 
 #### URL参数自动解码
+
 - **自动解码**：系统自动检测并解码浏览器编码的URL参数
 - **编码支持**：支持百分号编码（%2F → /, %2E → .）
 - **错误处理**：解码失败时自动回退到原始值

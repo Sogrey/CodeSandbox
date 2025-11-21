@@ -335,6 +335,11 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
 - `openlayers` - OpenLayers 地图引擎
 - `mapbox` - Mapbox 地图引擎
 
+**Mapbox 使用注意**：
+- Mapbox 需要访问令牌才能正常使用
+- 请在 [https://account.mapbox.com](https://account.mapbox.com) 注册并获取访问令牌
+- 在示例中替换 `'YOUR-ACCESS-TOKEN'` 为您的实际令牌
+
 ### 示例模板位置
 
 示例数据文件应放置在 `public/examples/` 目录下，支持以下结构：

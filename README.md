@@ -7,6 +7,8 @@
 - [Default](https://sogrey.top/CodeSandbox)
 - [Cesium](https://sogrey.top/CodeSandbox/?page=examples/cesium/default.html)
 - [Three.js](https://sogrey.top/CodeSandbox/?page=examples/three.js/default.html)
+- [OpenLayers](https://sogrey.top/CodeSandbox/?page=examples/openlayers/default.html)
+- [OpenLayers](https://sogrey.top/CodeSandbox/?page=examples/openlayers/default.html)
 
 ## ✨ 特性
 
@@ -259,7 +261,9 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
 系统支持两种模板文件格式：
 
 #### 1. 引擎模板文件（templates/）
+
 用于预览页面的HTML结构模板：
+
 ```html
 <!-- public/templates/default.html -->
 <!DOCTYPE html>
@@ -267,20 +271,30 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
   <head>
     <title>{{title}}</title>
     <meta name="description" content="{{{description}}}" />
-    {{{headHtmlContent}}}
-    {{{cssLinks}}}
-    <style>{{{cssContent}}}</style>
+    {{{headHtmlContent}}} {{{cssLinks}}}
+    <style>
+      {{{cssContent}}}
+    </style>
   </head>
   <body>
-    {{{htmlContent}}}
-    {{{jsLinks}}}
-    <script>{{{jsContent}}}</script>
+    {{{htmlContent}}} {{{jsLinks}}}
+    <script>
+      {
+        {
+          {
+            jsContent
+          }
+        }
+      }
+    </script>
   </body>
 </html>
 ```
 
 #### 2. 示例数据文件（examples/）
+
 包含完整示例数据和设置信息的模板：
+
 ```html
 <!-- public/examples/default/default.html -->
 <engine-type>default</engine-type>
@@ -294,7 +308,8 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
 <script></script>
 
 <style>
-  html, body {
+  html,
+  body {
     width: 100%;
     height: 100%;
     margin: 0;
@@ -311,9 +326,11 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
 ```
 
 **支持的引擎类型**：
+
 - `default` - 默认HTML引擎
 - `cesium` - Cesium 3D地图引擎
 - `three.js` - Three.js 3D图形引擎
+- `openlayers` - OpenLayers 地图引擎
 
 ### 示例模板位置
 
@@ -324,22 +341,27 @@ public/
 ├── templates/             # 引擎模板文件夹
 │   ├── default.html       # 默认引擎模板
 │   ├── cesium.html       # Cesium引擎模板
-│   └── three.js.html     # Three.js引擎模板
+│   ├── three.js.html     # Three.js引擎模板
+│   └── openlayers.html   # OpenLayers引擎模板
 ├── examples/             # 示例数据文件夹
 │   ├── default/           # 默认示例
 │   │   └── default.html
 │   ├── cesium/           # Cesium示例
 │   │   └── default.html
-│   └── three.js/         # Three.js示例
+│   ├── three.js/         # Three.js示例
+│   │   └── default.html
+│   └── openlayers/       # OpenLayers示例
 │       └── default.html
 └── previews/             # 预览页面文件夹
     ├── index.js          # 通用预览脚本
     ├── default/          # 默认引擎预览
     ├── cesium/          # Cesium引擎预览
-    └── three.js/        # Three.js引擎预览
+    ├── three.js/        # Three.js引擎预览
+    └── openlayers/      # OpenLayers引擎预览
 ```
 
 **文件用途说明**：
+
 - `templates/` - 引擎渲染模板，定义HTML结构
 - `examples/` - 示例数据文件，包含代码和设置
 - `previews/` - 预览页面，处理加密内容渲染

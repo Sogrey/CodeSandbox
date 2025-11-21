@@ -5,23 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{title}}</title>
     <meta name="description" content="{{{description}}}" />
-    {{{headHtmlContent}}}
-    {{{cssLinks}}}
+    {{{headHtmlContent}}} {{{cssLinks}}}
     <style>
       {{{cssContent}}}
     </style>
   </head>
   <body>
-    {{{htmlContent}}}
-    {{{jsLinks}}}
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "../../libs/Three.js/0.181.2/build/three.module.js",
-          "three/addons/": "../../libs/Three.js/0.181.2/jsm/"
-        }
-      }
-    </script>
+    {{{htmlContent}}} {{{jsLinks}}}
+    <script src="../../libs/openlayers/v9.2.0/ol.js"></script>
     <script type="{{{jsType}}}">
       {{{jsContent}}}
     </script>

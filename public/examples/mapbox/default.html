@@ -1,0 +1,44 @@
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>mapbox</engine-type>
+<title>Mapbox 示例</title>
+<meta name="description" content="这是一个简单 Mapbox 示例" />
+<template>
+  <div id="map"></div>
+</template>
+<script>
+  // TO MAKE THE MAP APPEAR YOU MUST
+  // ADD YOUR ACCESS TOKEN FROM
+  // https://account.mapbox.com
+  mapboxgl.accessToken =
+    'pk.eyJ1IjoiZXhhbXBsZXMiLCJhIjoiY203eXd1a3ZzMGV1ejJrcHRvdnVoYng0NCJ9.NzlqpAcLHejzezQqazzI-w'
+  const map = new mapboxgl.Map({
+    container: 'map', // container ID
+    center: [-74.5, 40], // starting position [lng, lat]. Note that lat must be set between -90 and 90
+    zoom: 9, // starting zoom
+  })
+</script>
+<style>
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  #map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+  }
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+  <head-metadata> </head-metadata>
+  <css-links> </css-links>
+  <js-links> </js-links>
+</settings>

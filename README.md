@@ -8,6 +8,7 @@
 - [Cesium](https://sogrey.top/CodeSandbox/?page=examples/cesium/default.html)
 - [Three.js](https://sogrey.top/CodeSandbox/?page=examples/three.js/default.html)
 - [OpenLayers](https://sogrey.top/CodeSandbox/?page=examples/openlayers/default.html)
+- [Mapbox](https://sogrey.top/CodeSandbox/?page=examples/mapbox/default.html)
 
 ## ✨ 特性
 
@@ -108,7 +109,9 @@ npm run lint
 ├── public/                  # 公共资源目录
 │   ├── libs/               # 第三方库文件
 │   │   ├── Cesium/        # Cesium 3D地图库
-│   │   └── Three.js/      # Three.js 3D图形库
+│   │   ├── Three.js/      # Three.js 3D图形库
+│   │   ├── openlayers/    # OpenLayers 地图库
+│   │   └── Mapbox/        # Mapbox 地图库
 │   ├── templates/          # 模板引擎文件
 │   │   ├── default.html   # 默认引擎模板
 │   │   ├── cesium.html    # Cesium引擎模板
@@ -330,6 +333,7 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
 - `cesium` - Cesium 3D地图引擎
 - `three.js` - Three.js 3D图形引擎
 - `openlayers` - OpenLayers 地图引擎
+- `mapbox` - Mapbox 地图引擎
 
 ### 示例模板位置
 
@@ -341,7 +345,8 @@ public/
 │   ├── default.html       # 默认引擎模板
 │   ├── cesium.html       # Cesium引擎模板
 │   ├── three.js.html     # Three.js引擎模板
-│   └── openlayers.html   # OpenLayers引擎模板
+│   ├── openlayers.html   # OpenLayers引擎模板
+│   └── mapbox.html       # Mapbox引擎模板
 ├── examples/             # 示例数据文件夹
 │   ├── default/           # 默认示例
 │   │   └── default.html
@@ -349,14 +354,17 @@ public/
 │   │   └── default.html
 │   ├── three.js/         # Three.js示例
 │   │   └── default.html
-│   └── openlayers/       # OpenLayers示例
+│   ├── openlayers/       # OpenLayers示例
+│   │   └── default.html
+│   └── mapbox/           # Mapbox示例
 │       └── default.html
 └── previews/             # 预览页面文件夹
     ├── index.js          # 通用预览脚本
     ├── default/          # 默认引擎预览
     ├── cesium/          # Cesium引擎预览
     ├── three.js/        # Three.js引擎预览
-    └── openlayers/      # OpenLayers引擎预览
+    ├── openlayers/      # OpenLayers引擎预览
+    └── mapbox/          # Mapbox引擎预览
 ```
 
 **文件用途说明**：

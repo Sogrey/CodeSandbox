@@ -756,7 +756,7 @@ const handleFileUpload = async (event: Event) => {
 
     // 解析文件内容
     const parsedData = await parseShareFileContent(fileContent)
-    console.log('解析完成，得到数据:', parsedData)
+    console.log('解析完成，得到数据')
 
     // 应用解析的数据到当前编辑器
     await applyImportedData(parsedData)
@@ -804,7 +804,7 @@ const readFileContent = (file: File): Promise<string> => {
 // 应用导入的数据到编辑器
 const applyImportedData = async (data: ParsedExampleData) => {
   try {
-    console.log('开始应用导入数据，传入的数据:', data)
+    console.log('开始应用导入数据，传入的数据')
     console.log('应用前的files.value:', files.value)
 
     // 设置模板类型（与page参数处理一致）
@@ -845,18 +845,19 @@ const applyImportedData = async (data: ParsedExampleData) => {
     pageDescription.value = data.description || 'A code sandbox preview page'
     console.log('标题描述更新后 - pageTitle:', pageTitle.value, 'pageDescription:', pageDescription.value)
 
-    console.log('导入的数据已应用到编辑器:', {
-      engineType: currentEngineType.value,
-      title: pageTitle.value,
-      description: pageDescription.value,
-      jsType: currentJsType.value,
-      cssLinksCount: cssLinks.value.length,
-      jsLinksCount: jsLinks.value.length,
-      filesCount: files.value.length,
-      htmlContentLength: files.value[0]?.content?.length || 0,
-      cssContentLength: files.value[1]?.content?.length || 0,
-      jsContentLength: files.value[2]?.content?.length || 0
-    })
+    console.log('导入的数据已应用到编辑器')
+    // console.log('导入的数据已应用到编辑器:', {
+    //   engineType: currentEngineType.value,
+    //   title: pageTitle.value,
+    //   description: pageDescription.value,
+    //   jsType: currentJsType.value,
+    //   cssLinksCount: cssLinks.value.length,
+    //   jsLinksCount: jsLinks.value.length,
+    //   filesCount: files.value.length,
+    //   htmlContentLength: files.value[0]?.content?.length || 0,
+    //   cssContentLength: files.value[1]?.content?.length || 0,
+    //   jsContentLength: files.value[2]?.content?.length || 0
+    // })
 
     // 自动运行导入的代码
     console.log('开始自动运行导入的代码...')

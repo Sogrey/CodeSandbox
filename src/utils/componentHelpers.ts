@@ -11,6 +11,209 @@
 
 
 /**
+ * 内容压缩和优化函数
+ * 移除不必要的空格、注释和空白，以减少内容大小
+ * @param {string} content 要压缩的内容
+ * @return {string} 压缩后的内容
+ */
+export const compressContent = (content: string): string => {
+  try {
+    // 移除HTML注释
+    let compressed = content.replace(/<!--[\s\S]*?-->/g, '')
+    
+    // 移除CSS注释
+    compressed = compressed.replace(/\/\*[\s\S]*?\*\//g, '')
+    
+    // 移除JS注释（单行和多行）
+    compressed = compressed.replace(/\/\/.*$/gm, '') // 单行注释
+    compressed = compressed.replace(/\/\*[\s\S]*?\*\//g, '') // 多行注释
+    
+    // 移除多余的空白字符（保留必要的空格）
+    compressed = compressed.replace(/\s+/g, ' ')
+    
+    // 移除行首行尾空格
+    compressed = compressed.replace(/^\s+|\s+$/gm, '')
+    
+    // 移除空行
+    compressed = compressed.replace(/\n\s*\n/g, '\n')
+    
+    return compressed.trim()
+  } catch (error) {
+    console.error('内容压缩失败:', error)
+    return content // 压缩失败时返回原内容
+  }
+}
+
+/**
+ * 智能内容压缩
+ * 根据内容类型选择最佳压缩策略
+ * @param {string} content 要压缩的内容
+ * @param {string} contentType 内容类型（html, css, js）
+ * @return {string} 压缩后的内容
+ */
+export const smartCompressContent = (content: string, contentType: string): string => {
+  if (!content || content.length === 0) return content
+  
+  try {
+    let compressed = content
+    
+    switch (contentType.toLowerCase()) {
+      case 'html':
+        // HTML特定压缩：保留必要空格，移除其他
+        compressed = content
+          .replace(/<!--[\s\S]*?-->/g, '') // 移除HTML注释
+          .replace(/\s+</g, '<') // 标签前的空格
+          .replace(/>\s+/g, '>') // 标签后的空格
+          .replace(/\s+/g, ' ') // 多个空格合并为一个
+          .trim()
+        break
+        
+      case 'css':
+        // CSS特定压缩
+        compressed = content
+          .replace(/\/\*[\s\S]*?\*\//g, '') // 移除CSS注释
+          .replace(/\s*{\s*/g, '{') // 大括号前后空格
+          .replace(/\s*}\s*/g, '}')
+          .replace(/;\s*/g, ';') // 分号后空格
+          .replace(/:\s*/g, ':') // 冒号后空格
+          .replace(/,\s*/g, ',') // 逗号后空格
+          .replace(/\s+/g, ' ') // 多个空格合并
+          .trim()
+        break
+        
+      case 'js':
+        // JavaScript基础压缩（避免影响语法）
+        compressed = content
+          .replace(/\/\/.*$/gm, '') // 移除单行注释
+          .replace(/\/\*[\s\S]*?\*\//g, '') // 移除多行注释
+          .replace(/\s*([{}();,=])\s*/g, '$1') // 操作符前后空格
+          .replace(/\s+/g, ' ') // 多个空格合并为一个
+          .trim()
+        break
+        
+      default:
+        // 通用压缩
+        compressed = compressContent(content)
+    }
+    
+    return compressed
+  } catch (error) {
+    console.error('智能压缩失败:', error)
+    return content
+  }
+}
+
+/**
+ * 检测分享内容大小和是否过长
+ * @param {string} content 要检测的内容
+ * @return {{isTooLong: boolean, originalSize: number, compressedSize: number, recommendedAction: string}} 检测结果
+ */
+export const checkShareContentSize = (content: string): {
+  isTooLong: boolean
+  originalSize: number
+  compressedSize: number
+  recommendedAction: string
+} => {
+  // URL长度限制考虑（保守估计2KB为安全范围）
+  const URL_SAFE_LIMIT = 2048
+  const URL_WARNING_THRESHOLD = 1500
+  
+  try {
+    const originalSize = content.length
+    
+    // 尝试压缩内容
+    const compressedContent = compressContent(content)
+    const compressedSize = compressedContent.length
+    
+    // 估算加密后的大小（Base64大约增加33%）
+    const estimatedEncryptedSize = Math.ceil(compressedSize * 1.33)
+    
+    const isTooLong = estimatedEncryptedSize > URL_SAFE_LIMIT
+    const isWarning = estimatedEncryptedSize > URL_WARNING_THRESHOLD
+    
+    let recommendedAction = ''
+    if (isTooLong) {
+      recommendedAction = '文件内容过长，强烈建议下载分享'
+    } else if (isWarning) {
+      recommendedAction = '文件内容较长，建议下载分享'
+    } else {
+      recommendedAction = '内容大小正常'
+    }
+    
+    return {
+      isTooLong,
+      originalSize,
+      compressedSize,
+      recommendedAction
+    }
+  } catch (error) {
+    console.error('内容大小检测失败:', error)
+    return {
+      isTooLong: true,
+      originalSize: content.length,
+      compressedSize: content.length,
+      recommendedAction: '无法检测内容大小，建议下载分享'
+    }
+  }
+}
+
+/**
+ * 优化的加密函数
+ * 包含内容压缩优化
+ * @param {string} data 要加密的字符串数据
+ * @param {string} key 加密密钥
+ * @param {Object} options 加密选项
+ * @return {string} 加密后的Base64字符串
+ */
+export const optimizedEncryptContent = (
+  data: string,
+  key: string = 'CodeSandbox2025',
+  options: { debug?: boolean; enableCompression?: boolean } = { 
+    debug: false, 
+    enableCompression: true 
+  }
+): { encryptedContent: string; originalSize: number; compressedSize: number } => {
+  const { debug = false, enableCompression = true } = options
+  
+  try {
+    const originalSize = data.length
+    let processedData = data
+    let compressedSize = originalSize
+    
+    if (enableCompression && originalSize > 100) {
+      processedData = compressContent(data)
+      compressedSize = processedData.length
+      
+      if (debug) {
+        console.log(`压缩效果: ${originalSize} -> ${compressedSize} (${((1 - compressedSize / originalSize) * 100).toFixed(1)}% 减少)`)
+      }
+    }
+    
+    // 使用原有的加密逻辑
+    const encryptedContent = encryptContent(processedData, key, { debug })
+    
+    if (debug) {
+      console.log('优化加密完成，原始长度:', originalSize, '处理后长度:', compressedSize, '加密后长度:', encryptedContent.length)
+    }
+    
+    return {
+      encryptedContent,
+      originalSize,
+      compressedSize
+    }
+  } catch (error) {
+    console.error('优化加密失败:', error)
+    // 回退到原加密方法
+    const encryptedContent = encryptContent(data, key, { debug })
+    return {
+      encryptedContent,
+      originalSize: data.length,
+      compressedSize: data.length
+    }
+  }
+}
+
+/**
  * 简单的加密函数
  * 使用XOR加密和Base64编码的组合来保护数据
  * @param {string} data 要加密的字符串数据
@@ -465,6 +668,146 @@ export const parseUrlPage = async (): Promise<ParsedExampleData | null> => {
   } catch (error) {
     console.error('解析URL page参数失败:', error)
     return null
+  }
+}
+
+/**
+ * 解析上传的HTML文件内容，提取模板数据和设置信息
+ * 支持解析包含<engine-type>、<template>、<script>、<style>、<settings>等标签的HTML文件
+ * @param {string} fileContent HTML文件内容
+ * @return {Promise<ParsedExampleData>} 返回解析后的示例数据对象
+ * @throws {Error} 文件解析失败时抛出异常
+ * @example
+ * // 解析上传的文件内容
+ * const data = await parseShareFileContent(fileContent)
+ * console.log(data.html) // HTML内容
+ * console.log(data.engineType) // 模板引擎类型
+ */
+export const parseShareFileContent = async (fileContent: string): Promise<ParsedExampleData> => {
+  try {
+    console.log('开始解析分享文件内容，原始内容长度:', fileContent.length)
+    console.log('文件内容预览:', fileContent.substring(0, 200) + '...')
+    
+    // 移除可能的分享信息注释
+    let cleanedContent = fileContent
+    const shareInfoRegex = /<!--[\s\S]*?CodeSandbox 分享文件[\s\S]*?-->/g
+    cleanedContent = cleanedContent.replace(shareInfoRegex, '')
+    console.log('清理注释后内容长度:', cleanedContent.length)
+
+    // 提取模板类型
+    const typeMatch = cleanedContent.match(/<engine-type>([\s\S]*?)<\/engine-type>/)
+    const engineType = typeMatch ? typeMatch[1]?.trim() : 'default'
+    console.log('解析的engineType:', engineType)
+
+    // 提取 template 部分
+    const templateMatch = cleanedContent.match(/<template>([\s\S]*?)<\/template>/)
+    const htmlContent = templateMatch ? templateMatch[1]?.trim() : ''
+    console.log('templateMatch是否找到:', !!templateMatch)
+    console.log('解析的HTML内容长度:', htmlContent.length)
+    if (htmlContent.length > 0) {
+      console.log('HTML内容预览:', htmlContent.substring(0, 100) + '...')
+    }
+
+    // 提取 script 部分 - 支持普通script和module类型
+    let jsType = ''
+    let jsContent = ''
+    
+    // 先尝试匹配module类型的script
+    let scriptMatch = cleanedContent.match(/<script\s+type="module">([\s\S]*?)<\/script>/)
+    if (scriptMatch) {
+      jsContent = scriptMatch[1]?.trim() || ''
+      jsType = 'module'
+    } else {
+      // 如果没找到module类型，再匹配普通script
+      scriptMatch = cleanedContent.match(/<script>([\s\S]*?)<\/script>/)
+      if (scriptMatch) {
+        jsContent = scriptMatch[1]?.trim() || ''
+        jsType = 'classic'
+      }
+    }
+    console.log('scriptMatch是否找到:', !!scriptMatch)
+    console.log('解析的JS内容长度:', jsContent.length)
+    if (jsContent.length > 0) {
+      console.log('JS内容预览:', jsContent.substring(0, 100) + '...')
+    }
+    
+    // 检测script类型
+    if (jsContent) {
+      // 检查是否包含import语句或ES6语法
+      if (jsContent.includes('import ') || jsContent.includes('export ') || jsContent.includes('=>') || jsContent.includes('const ')) {
+        jsType = 'module'
+      } else {
+        jsType = 'classic'
+      }
+    }
+
+    // 提取 style 部分
+    const styleMatch = cleanedContent.match(/<style>([\s\S]*?)<\/style>/)
+    const cssContent = styleMatch ? styleMatch[1]?.trim() : ''
+
+    // 提取标题（在settings外部）
+    const titleMatch = cleanedContent.match(/<title>([\s\S]*?)<\/title>/)
+    const title = titleMatch ? titleMatch[1]?.trim() : ''
+    console.log('解析的title:', title)
+
+    // 提取描述（在meta标签中）
+    const descMatch = cleanedContent.match(/<meta[^>]*name="description"[^>]*content="([^"]*)"[^>]*>/)
+    const description = descMatch ? descMatch[1]?.trim() : ''
+    console.log('解析的description:', description)
+
+    // 提取 settings 部分
+    let headHtmlContent = ''
+    let cssLinks: string[] = []
+    let jsLinks: string[] = []
+
+    const settingsMatch = cleanedContent.match(/<settings>([\s\S]*?)<\/settings>/)
+    if (settingsMatch) {
+      const settingsContent = settingsMatch[1]
+      console.log('找到settings部分，内容长度:', settingsContent.length)
+      
+      // 提取 headHtmlContent (匹配 head-metadata 标签)
+      const headHtmlMatch = settingsContent.match(/<head-metadata>([\s\S]*?)<\/head-metadata>/)
+      if (headHtmlMatch) {
+        headHtmlContent = headHtmlMatch[1]?.trim() || ''
+        console.log('解析的headHtmlContent长度:', headHtmlContent.length)
+      }
+
+      // 提取 CSS 链接 (匹配 css-links 标签)
+      const cssLinksMatch = settingsContent.match(/<css-links>([\s\S]*?)<\/css-links>/)
+      if (cssLinksMatch) {
+        const cssLinksContent = cssLinksMatch[1]
+        const linkMatches = cssLinksContent.match(/<link[^>]*>/g) || []
+        cssLinks = linkMatches.map(link => link.replace(/\/\*.*?\*\/|\/\/.*$/g, '').trim()).filter(Boolean)
+        console.log('解析的cssLinks数量:', cssLinks.length)
+      }
+
+      // 提取 JS 链接 (匹配 js-links 标签)
+      const jsLinksMatch = settingsContent.match(/<js-links>([\s\S]*?)<\/js-links>/)
+      if (jsLinksMatch) {
+        const jsLinksContent = jsLinksMatch[1]
+        const scriptMatches = jsLinksContent.match(/<script[^>]*><\/script>/g) || []
+        jsLinks = scriptMatches.map(script => script.replace(/\/\*.*?\*\/|\/\/.*$/g, '').trim()).filter(Boolean)
+        console.log('解析的jsLinks数量:', jsLinks.length)
+      }
+    } else {
+      console.log('未找到settings部分')
+    }
+
+    return {
+      engineType,
+      html: htmlContent,
+      css: cssContent,
+      js: jsContent,
+      headHtmlContent,
+      cssLinks,
+      jsLinks,
+      title,
+      description,
+      jsType
+    }
+  } catch (error) {
+    console.error('解析分享文件内容失败:', error)
+    throw new Error(`分享文件解析失败: ${error instanceof Error ? error.message : '未知错误'}`)
   }
 }
 

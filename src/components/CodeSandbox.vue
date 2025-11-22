@@ -24,10 +24,17 @@
                   <span class="btn-icon">▶️</span>
                   <span class="btn-text">运行</span>
                 </button>
-                <button @click="downloadFullHtml" class="action-btn" title="下载HTML文件">
+                <button @click="downloadFullHtml" class="action-btn" title="下载HTML文件" style="display: none;">
                   <span class="btn-icon">📥</span>
                   <span class="btn-text">下载</span>
                 </button>
+                <button @click="handleImportFile" class="action-btn" title="导入分享文件">
+                  <span class="btn-icon">📂</span>
+                  <span class="btn-text">导入</span>
+                </button>
+                <!-- 隐藏的文件输入 -->
+                <input ref="fileInput" type="file" accept=".html,.htm" @change="handleFileUpload"
+                  style="display: none;" />
                 <button @click="handleShowShare" class="action-btn" title="分享链接">
                   <span class="btn-icon">🔗</span>
                   <span class="btn-text">分享</span>
@@ -51,9 +58,35 @@
               <div class="share-body">
                 <div class="url-input-group">
                   <input ref="shareUrlInput" v-model="shareUrl" type="text" readonly class="url-input" />
-                  <button @click="copyShareUrl" class="copy-btn" title="复制链接">
-                    <span class="copy-icon">📋</span>
-                    <span class="copy-text">复制</span>
+                  <div class="button-group">
+                    <button @click="previewShareUrl" class="preview-btn" title="预览分享链接">
+                      <span class="preview-icon">👁️</span>
+                      <span class="preview-text">预览</span>
+                    </button>
+                    <button @click="copyShareUrl" class="copy-btn" title="复制链接">
+                      <span class="copy-icon">📋</span>
+                      <span class="copy-text">复制</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 内容大小提示 -->
+                <div v-if="shareSizeInfo.isTooLong || shareSizeInfo.recommendedAction !== '内容大小正常'"
+                  class="share-size-warning">
+                  <span :class="{ 'warning-text': shareSizeInfo.isTooLong }">
+                    {{ shareSizeInfo.recommendedAction }}
+                  </span>
+                  <div class="size-details">
+                    内容大小: {{ formatFileSize(shareSizeInfo.originalSize) }} →
+                    加密后: {{ formatFileSize(shareSizeInfo.compressedSize) }}
+                  </div>
+                </div>
+
+                <!-- 下载完整数据文件按钮 -->
+                <div class="download-suggestion">
+                  <button @click="downloadShareFile" class="download-btn">
+                    <span>📥</span>
+                    <span>下载完整版分享文件</span>
                   </button>
                 </div>
               </div>
@@ -176,7 +209,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import jsBeautify from 'js-beautify'
 import { buildFullHtml, generateExtendedTemplate } from '@/utils/templateGenerator'
 import type { ParsedExampleData } from '@/utils/componentHelpers'
@@ -186,6 +219,7 @@ import {
   parseDemoHtml,
   parseUrlCode,
   parseUrlPage,
+  parseShareFileContent,
   parseEngineType,
   checkUrlParams,
   saveSettings,
@@ -195,7 +229,9 @@ import {
   addJsLink,
   removeJsLink,
   downloadHtml,
-  encryptContent
+  encryptContent,
+  checkShareContentSize,
+  optimizedEncryptContent
 } from '@/utils/componentHelpers'
 import type { FileInfo } from '@/utils/componentHelpers'
 
@@ -383,6 +419,16 @@ const showSharePopup = ref(false) // 是否显示分享气泡浮窗
 const shareUrlInput = ref<HTMLInputElement>() // 分享链接输入框引用
 const currentUrl = ref('') // 当前页面URL（不带参数）
 const shareUrl = ref('') // 生成的分享链接
+const shareSizeInfo = ref({ // 分享内容大小信息
+  isTooLong: false,
+  originalSize: 0,
+  compressedSize: 0,
+  recommendedAction: '内容大小正常'
+})
+
+// 文件导入相关状态
+const fileInput = ref<HTMLInputElement>() // 文件输入框引用
+const isImporting = ref(false) // 是否正在导入
 
 // 设置相关状态
 const currentSettingTab = ref('html') // 当前设置标签页
@@ -563,6 +609,273 @@ const downloadFullHtml = async () => {
   downloadHtml(templateHtml, data.title ? `${data.title}-template.html` : 'code-sandbox-template.html')
 }
 
+// 格式化文件大小
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+// 处理文件导入
+const handleImportFile = () => {
+  if (!fileInput.value) {
+    console.error('文件输入框未找到')
+    return
+  }
+
+  fileInput.value.click()
+}
+
+// 处理文件上传
+const handleFileUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+
+  if (!file) {
+    return
+  }
+
+  // 检查文件类型
+  const validTypes = ['text/html', 'application/html', '.html', '.htm']
+  const fileName = file.name.toLowerCase()
+  const isHtmlFile = fileName.endsWith('.html') || fileName.endsWith('.htm') ||
+    file.type === 'text/html' || file.type === 'application/html'
+
+  if (!isHtmlFile) {
+    console.error('请上传HTML文件')
+    alert('请上传 .html 或 .htm 文件')
+    return
+  }
+
+  // 检查文件大小（限制10MB）
+  const maxSize = 10 * 1024 * 1024
+  if (file.size > maxSize) {
+    console.error('文件过大')
+    alert('文件过大，请上传小于10MB的文件')
+    return
+  }
+
+  try {
+    isImporting.value = true
+
+    // 读取文件内容
+    const fileContent = await readFileContent(file)
+
+    // 解析文件内容
+    const parsedData = await parseShareFileContent(fileContent)
+    console.log('解析完成，得到数据:', parsedData)
+
+    // 应用解析的数据到当前编辑器
+    await applyImportedData(parsedData)
+
+    console.log('文件导入成功:', parsedData.title || '未命名项目')
+
+    // 显示成功提示（可选）
+    // alert('文件导入成功！')
+
+  } catch (error) {
+    console.error('文件导入失败:', error)
+    const errorMessage = error instanceof Error ? error.message : '未知错误'
+    alert(`文件导入失败: ${errorMessage}`)
+  } finally {
+    isImporting.value = false
+    // 清空文件输入，允许重新选择同一文件
+    if (target) {
+      target.value = ''
+    }
+  }
+}
+
+// 读取文件内容
+const readFileContent = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      const content = e.target?.result
+      if (typeof content === 'string') {
+        resolve(content)
+      } else {
+        reject(new Error('文件内容读取失败'))
+      }
+    }
+
+    reader.onerror = () => {
+      reject(new Error('文件读取错误'))
+    }
+
+    reader.readAsText(file, 'utf-8')
+  })
+}
+
+// 应用导入的数据到编辑器
+const applyImportedData = async (data: ParsedExampleData) => {
+  try {
+    console.log('开始应用导入数据，传入的数据:', data)
+    console.log('应用前的files.value:', files.value)
+
+    // 设置模板类型（与page参数处理一致）
+    currentEngineType.value = data.engineType || 'default'
+    currentJsType.value = data.jsType || ''
+    console.log('设置模板类型后 - currentEngineType:', currentEngineType.value, 'currentJsType:', currentJsType.value)
+
+    // 重新创建文件数组（与page参数处理一致）
+    files.value = [
+      {
+        name: 'index.html',
+        language: 'html',
+        content: data.html || '<!-- 请编写你的HTML代码 -->'
+      },
+      {
+        name: 'style.css',
+        language: 'css',
+        content: data.css || '/* 请编写你的CSS样式 */'
+      },
+      {
+        name: 'script.js',
+        language: 'javascript',
+        content: data.js || '// 请编写你的JavaScript代码'
+      }
+    ]
+    console.log('重新创建files.value后的结果:', files.value)
+
+    // 更新设置状态 - 仅使用导入数据中的设置数据（与page参数处理一致）
+    headHtmlContent.value = data.headHtmlContent || ''
+    cssLinks.value = data.cssLinks.length > 0 ? data.cssLinks : ['']
+    jsLinks.value = data.jsLinks.length > 0 ? data.jsLinks : ['']
+    console.log('设置状态更新后 - headHtmlContent长度:', headHtmlContent.value.length,
+      'cssLinks数量:', cssLinks.value.length,
+      'jsLinks数量:', jsLinks.value.length)
+
+    // 更新标题和描述（与page参数处理一致）
+    pageTitle.value = data.title || 'CodeSandbox Preview'
+    pageDescription.value = data.description || 'A code sandbox preview page'
+    console.log('标题描述更新后 - pageTitle:', pageTitle.value, 'pageDescription:', pageDescription.value)
+
+    console.log('导入的数据已应用到编辑器:', {
+      engineType: currentEngineType.value,
+      title: pageTitle.value,
+      description: pageDescription.value,
+      jsType: currentJsType.value,
+      cssLinksCount: cssLinks.value.length,
+      jsLinksCount: jsLinks.value.length,
+      filesCount: files.value.length,
+      htmlContentLength: files.value[0]?.content?.length || 0,
+      cssContentLength: files.value[1]?.content?.length || 0,
+      jsContentLength: files.value[2]?.content?.length || 0
+    })
+
+    // 自动运行导入的代码
+    console.log('开始自动运行导入的代码...')
+
+    // 使用 nextTick 确保DOM更新后再运行代码
+    await nextTick()
+
+    // 延迟一小段时间确保编辑器完全更新
+    setTimeout(() => {
+      // 强制刷新编辑器显示
+      refreshEditors()
+
+      // 再延迟一下运行代码，确保编辑器完全刷新
+      setTimeout(() => {
+        if (runCode) {
+          runCode()
+          console.log('导入代码已自动运行')
+        } else {
+          console.warn('runCode函数不可用')
+        }
+      }, 200)
+    }, 300)
+
+  } catch (error) {
+    console.error('应用导入数据失败:', error)
+    throw new Error('应用导入数据失败')
+  }
+}
+
+// 强制刷新编辑器显示
+const refreshEditors = () => {
+  try {
+    console.log('开始刷新编辑器显示...')
+
+    // 强制更新所有文件的编辑器显示
+    const currentFileName = currentFile.value
+
+    // 使用 nextTick 确保 DOM 更新
+    nextTick(() => {
+      // 强制更新当前显示的文件编辑器
+      updateEditor()
+      console.log('编辑器已强制刷新，当前文件:', currentFileName)
+
+      // 如果需要，可以短暂切换到其他文件再切回来以确保刷新
+      const otherFile = files.value.find(f => f.name !== currentFileName)
+      if (otherFile) {
+        // 切换到其他文件
+        currentFile.value = otherFile.name
+        setTimeout(() => {
+          // 切换回原文件，触发双重刷新
+          currentFile.value = currentFileName
+          console.log('编辑器双重刷新完成')
+        }, 50)
+      } else {
+        // 如果只有一个文件或切换失败，直接更新编辑器
+        updateEditor()
+      }
+    })
+
+  } catch (error) {
+    console.error('刷新编辑器失败:', error)
+  }
+}
+
+// 下载分享文件
+const downloadShareFile = () => {
+  // 获取当前编辑内容
+  const { htmlContent, cssContent, jsContent } = getFileContents(files.value)
+
+  const data: ParsedExampleData = {
+    engineType: currentEngineType.value,
+    html: htmlContent,
+    css: cssContent,
+    js: jsContent,
+    title: pageTitle.value || 'CodeSandbox分享',
+    description: pageDescription.value,
+    headHtmlContent: headHtmlContent.value,
+    cssLinks: cssLinks.value,
+    jsLinks: jsLinks.value,
+    jsType: currentJsType.value
+  }
+
+  // 生成扩展的HTML模板内容
+  const templateContent = generateExtendedTemplate(data)
+
+  // 生成带参数的分享链接用于文件内说明
+  const url = new URL(window.location.href)
+  url.search = '' // 清空所有参数
+
+  // 添加分享说明注释
+  const shareInfo = `<!--
+CodeSandbox 分享文件
+生成时间: ${new Date().toLocaleString()}
+页面标题: ${data.title}
+原始页面链接: ${url.toString()}
+-->
+`
+
+  const finalContent = shareInfo + templateContent
+
+  // 下载文件
+  const filename = `${data.title || 'CodeSandbox'}-share-${Date.now()}.html`
+  downloadHtml(finalContent, filename)
+
+  // 关闭分享弹窗
+  showSharePopup.value = false
+
+  console.log('分享文件已下载:', filename)
+}
+
 // 显示分享弹窗
 const handleShowShare = () => {
   generateShareUrl()
@@ -598,8 +911,56 @@ const generateShareUrl = () => {
   // 对内容进行加密处理（XOR + Base64双重保护）
   const encryptedContent = encryptContent(templateContent)
 
+  // 检查内容大小（仅用于显示提示）
+  shareSizeInfo.value = checkShareContentSize(encryptedContent)
+  shareSizeInfo.value.originalSize = templateContent.length
+  shareSizeInfo.value.compressedSize = encryptedContent.length // 使用加密后的长度
+
   // 生成带参数的分享链接
   shareUrl.value = `${currentUrl.value}?code=${encryptedContent}`
+
+  console.log('分享链接生成完成:', {
+    原始大小: templateContent.length,
+    加密后大小: encryptedContent.length,
+    是否过长: shareSizeInfo.value.isTooLong,
+    建议: shareSizeInfo.value.recommendedAction
+  })
+}
+
+// 预览分享链接
+const previewShareUrl = () => {
+  if (!shareUrl.value) {
+    console.error('分享链接为空')
+    return
+  }
+
+  try {
+    // 在新标签页中打开分享链接
+    const previewWindow = window.open(shareUrl.value, '_blank')
+
+    if (!previewWindow) {
+      // 如果弹窗被阻止，提示用户
+      console.warn('弹窗被浏览器阻止，请允许弹窗或手动复制链接')
+      // 可以在这里添加用户提示，比如使用 toast 或 alert
+      return
+    }
+
+    console.log('预览窗口已打开:', shareUrl.value)
+
+    // 可选：预览窗口打开后关闭分享弹窗
+    // showSharePopup.value = false
+
+  } catch (error) {
+    console.error('打开预览窗口失败:', error)
+    // 如果 window.open 失败，可以尝试其他方式
+    try {
+      // 备用方案：使用 location.href（当前窗口）
+      console.log('使用当前窗口打开预览')
+      window.location.href = shareUrl.value
+    } catch (fallbackError) {
+      console.error('所有预览方案都失败:', fallbackError)
+    }
+  }
 }
 
 // 复制分享链接
@@ -1673,6 +2034,57 @@ onUnmounted(() => {
 
 .share-body {
   padding: 16px;
+
+  .share-size-warning {
+    margin: 12px 0;
+    padding: 12px;
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    border-radius: 4px;
+    font-size: 12px;
+    color: #ffc107;
+
+    .warning-text {
+      color: #f44336;
+      font-weight: 500;
+    }
+
+    .size-details {
+      margin-top: 4px;
+      opacity: 0.8;
+      font-size: 11px;
+    }
+  }
+
+  .download-suggestion {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #3e3e42;
+
+    .download-btn {
+      width: 100%;
+      padding: 8px 12px;
+      background: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background: #1976d2;
+      }
+
+      &:active {
+        background: #1565c0;
+      }
+    }
+  }
 }
 
 .url-input-group {
@@ -1687,8 +2099,63 @@ onUnmounted(() => {
     color: #ffffff;
     padding: 8px 12px;
     border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    resize: none;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 4px;
+    align-items: stretch;
+
+    .preview-btn,
+    .copy-btn {
+      padding: 8px 12px;
+      background: #3a3a3a;
+      color: #cccccc;
+      border: 1px solid #3e3e42;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+
+      &:hover {
+        background: #4a4a4a;
+        border-color: #5a5a5a;
+      }
+
+      &:active {
+        background: #2a2a2a;
+        transform: translateY(1px);
+      }
+    }
+
+    .preview-btn {
+      &:hover {
+        background: #1976d2;
+        border-color: #1565c0;
+        color: white;
+      }
+    }
+
+    .copy-btn {
+      &:hover {
+        background: #388e3c;
+        border-color: #2e7d32;
+        color: white;
+      }
+    }
+
+    border-radius: 4px;
     font-size: 14px;
-    font-family: 'Monaco', 'Courier New', monospace;
+    font-family: 'Monaco',
+    'Courier New',
+    monospace;
 
     &:focus {
       outline: none;
@@ -1700,32 +2167,7 @@ onUnmounted(() => {
     }
   }
 
-  .copy-btn {
-    background: #007acc;
-    border: none;
-    color: #ffffff;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: background-color 0.2s ease;
 
-    &:hover {
-      background: #118bee;
-    }
-
-    .copy-icon {
-      font-size: 14px;
-    }
-
-    .copy-text {
-      white-space: nowrap;
-    }
-  }
 }
 
 .share-overlay {
@@ -1754,9 +2196,15 @@ onUnmounted(() => {
   .url-input-group {
     flex-direction: column;
 
-    .copy-btn {
+    .button-group {
+      flex-direction: column;
       width: 100%;
-      justify-content: center;
+
+      .preview-btn,
+      .copy-btn {
+        width: 100%;
+        justify-content: center;
+      }
     }
   }
 }

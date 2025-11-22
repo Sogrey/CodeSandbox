@@ -113,18 +113,27 @@ npm run lint
 │   │   ├── openlayers/    # OpenLayers 地图库
 │   │   └── Mapbox/        # Mapbox 地图库
 │   ├── templates/          # 模板引擎文件
+│   │   ├── README.md      # 模板说明文档
 │   │   ├── default.html   # 默认引擎模板
 │   │   ├── cesium.html    # Cesium引擎模板
-│   │   └── three.js.html # Three.js引擎模板
+│   │   ├── three.js.html # Three.js引擎模板
+│   │   ├── openlayers.html # OpenLayers引擎模板
+│   │   └── mapbox.html    # Mapbox引擎模板
 │   ├── previews/           # 预览页面文件夹
+│   │   ├── README.md      # 预览说明文档
 │   │   ├── index.js       # 通用预览页面脚本
 │   │   ├── default/       # 默认引擎预览
 │   │   ├── cesium/        # Cesium引擎预览
-│   │   └── three.js/     # Three.js引擎预览
+│   │   ├── three.js/     # Three.js引擎预览
+│   │   ├── openlayers/    # OpenLayers引擎预览
+│   │   └── mapbox/        # Mapbox引擎预览
 │   ├── examples/          # 示例数据文件夹
+│   │   ├── README.md      # 示例说明文档
 │   │   ├── default/       # 默认示例
 │   │   ├── cesium/        # Cesium示例
-│   │   └── three.js/     # Three.js示例
+│   │   ├── three.js/     # Three.js示例
+│   │   ├── openlayers/    # OpenLayers示例
+│   │   └── mapbox/       # Mapbox示例
 │   ├── demo.html           # 演示页面
 │   └── favicon.ico         # 网站图标
 ├── .github/                # GitHub Actions
@@ -195,9 +204,9 @@ http://yourdomain.com/?page=/examples/demo1.html
 
 ```javascript
 // 浏览器编码后的URL也能正确解析
-//sogrey.top/CodeSandbox/?type=mars3d&page=.%2Fexamples%2Fmars3d%2Fdefault.html
+//sogrey.top/CodeSandbox/?page=.%2Fexamples%2Fcesium%2Fdefault.html
 // 自动解码为：
-https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
+https: (page = './examples/cesium/default.html')
 ```
 
 **特点**：
@@ -228,13 +237,7 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
   <body>
     {{{htmlContent}}} {{{jsLinks}}}
     <script>
-      {
-        {
-          {
-            jsContent
-          }
-        }
-      }
+      {{{jsContent}}}
     </script>
   </body>
 </html>
@@ -281,13 +284,7 @@ https: ((type = 'mars3d'), (page = './examples/mars3d/default.html'))
   <body>
     {{{htmlContent}}} {{{jsLinks}}}
     <script>
-      {
-        {
-          {
-            jsContent
-          }
-        }
-      }
+      {{{jsContent}}}
     </script>
   </body>
 </html>
@@ -491,7 +488,6 @@ public/
 
 目前支持以下编辑器主题：
 
-- **One Dark** - 经典的深色主题
 - **Shadowfox** - 深色主题变体
 
 ## 🚀 优化总结

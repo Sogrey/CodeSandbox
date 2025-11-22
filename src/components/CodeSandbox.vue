@@ -199,6 +199,81 @@ import {
 } from '@/utils/componentHelpers'
 import type { FileInfo } from '@/utils/componentHelpers'
 
+// IndexedDB 数据存储
+interface PreviewData {
+  content: string
+  timestamp: number
+  used: boolean
+}
+
+// 存储预览数据到 IndexedDB
+const storePreviewData = async (jsonData: string): Promise<string> => {
+  try {
+    // 检查 IndexedDB 支持
+    if (!window.indexedDB) {
+      console.warn('浏览器不支持 IndexedDB，回退到 URL 参数方式')
+      // 回退到原来的方式
+      const content = encryptContent(jsonData)
+      const data = JSON.parse(jsonData)
+      previewFrame.value.src = `./previews/${data.engineType}/default.html?content=${content}`
+      return ''
+    }
+
+    // 生成短令牌
+    const token = generateShortToken()
+    
+    const data: PreviewData = {
+      content: jsonData,
+      timestamp: Date.now(),
+      used: false
+    }
+
+    // 打开 IndexedDB
+    const db = await openIndexedDB()
+    const transaction = db.transaction(['previews'], 'readwrite')
+    const store = transaction.objectStore('previews')
+    
+    // 存储数据
+    await store.put(data, token)
+    
+    console.log('预览数据已存储，令牌:', token)
+    return token
+  } catch (error) {
+    console.error('存储预览数据失败:', error)
+    // 回退到 URL 参数方式
+    const content = encryptContent(jsonData)
+    const data = JSON.parse(jsonData)
+    previewFrame.value.src = `./previews/${data.engineType}/default.html?content=${content}`
+    return ''
+  }
+}
+
+// 打开 IndexedDB 数据库
+const openIndexedDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('CodeSandboxDB', 1)
+    
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve(request.result)
+    
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result
+      if (!db.objectStoreNames.contains('previews')) {
+        db.createObjectStore('previews')
+      }
+    }
+  })
+}
+
+// 生成短令牌
+const generateShortToken = (): string => {
+  // 8位字符：大小写字母+数字
+  return Math.random()
+    .toString(36)
+    .substring(2, 10)
+    .padEnd(8, '0')
+}
+
 // CodeMirror 动态导入
 let EditorView: any = null
 let basicSetup: any = null
@@ -438,10 +513,15 @@ const runCode = async () => {
     jsType: currentJsType.value
   }
 
-  // 对数据进行加密处理
+  // 使用IndexedDB + 令牌机制传递数据
   const jsonData = JSON.stringify(data)
-  const content = encryptContent(jsonData)
-  previewFrame.value.src = `./previews/${data.engineType}/default.html?content=${content}`
+  const token = await storePreviewData(jsonData)
+  
+  // 如果获取到token，使用token方式；否则已在storePreviewData中处理回退
+  if (token) {
+    previewFrame.value.src = `./previews/${data.engineType}/default.html?token=${token}`
+  }
+  // 如果token为空，说明在storePreviewData中已经处理了回退逻辑
 
   // 解密在 public\previews\index.js
 }

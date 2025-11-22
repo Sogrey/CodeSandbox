@@ -74,55 +74,157 @@ const decryptContent = (encryptedData, key = 'CodeSandbox2025') => {
 }
 
 /**
- * 获取URL参数并解密内容
+ * 从 IndexedDB 获取数据并立即清理
  */
-const getDecryptedContent = () => {
+const getDataFromIndexedDB = async (token) => {
+  try {
+    // 检查 IndexedDB 支持
+    if (!window.indexedDB) {
+      console.warn('浏览器不支持 IndexedDB')
+      return null
+    }
+
+    // 打开 IndexedDB
+    const db = await openIndexedDB()
+    const transaction = db.transaction(['previews'], 'readwrite')
+    const store = transaction.objectStore('previews')
+    
+    // 获取数据
+    const request = store.get(token)
+    
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => {
+        const data = request.result
+        
+        if (!data) {
+          console.warn('未找到token对应的数据')
+          resolve(null)
+          return
+        }
+        
+        if (data.used) {
+          console.warn('数据已被使用，可能重复访问')
+          resolve(null)
+          return
+        }
+        
+        // 立即标记为已使用并删除（一次性使用）
+        const deleteRequest = store.delete(token)
+        deleteRequest.onsuccess = () => {
+          console.log('数据已清理，token:', token)
+        }
+        deleteRequest.onerror = () => {
+          console.warn('数据清理失败:', deleteRequest.error)
+        }
+        
+        resolve(data.content)
+      }
+      
+      request.onerror = () => {
+        console.error('获取数据失败:', request.error)
+        reject(request.error)
+      }
+    })
+  } catch (error) {
+    console.error('IndexedDB操作失败:', error)
+    return null
+  }
+}
+
+/**
+ * 打开 IndexedDB 数据库
+ */
+const openIndexedDB = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('CodeSandboxDB', 1)
+    
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve(request.result)
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result
+      if (!db.objectStoreNames.contains('previews')) {
+        db.createObjectStore('previews')
+      }
+    }
+  })
+}
+
+/**
+ * 获取URL参数并解密内容（支持token和content两种方式）
+ */
+const getDecryptedContent = async () => {
   try {
     // 获取URL参数
     const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
     const encryptedContent = urlParams.get('content')
 
-    if (!encryptedContent) {
-      console.warn('未找到content参数')
-      return null
-    }
+    // 优先使用token方式
+    if (token) {
+      console.log('使用token方式获取数据')
+      const jsonData = await getDataFromIndexedDB(token)
+      
+      if (!jsonData) {
+        console.error('未找到有效的token数据')
+        return null
+      }
 
-    // 解密内容
-    const decryptedJson = decryptContent(encryptedContent)
-
-    // 检查是否是有效的JSON格式
-    if (!decryptedJson.trim().startsWith('{') && !decryptedJson.trim().startsWith('[')) {
-      console.error('可能的原因: 加解密不匹配或数据损坏')
-      return null
-    }
-
-    // 解析为JSON对象
-    let data
-    try {
-      data = JSON.parse(decryptedJson)
-    } catch (jsonError) {
-      console.error('JSON解析失败:', jsonError.message)
-      console.error('原始数据:', decryptedJson)
-
-      // 尝试修复常见的JSON问题
+      // 解析为JSON对象
       try {
-        const fixedJson = decryptedJson
-          .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // 移除控制字符
-          .replace(/\\n/g, '\\\\n') // 修复换行符
-          .replace(/\\n/g, '\\\\n') // 修复回车符
-          .replace(/\\t/g, '\\\\t') // 修复制表符
-
-        data = JSON.parse(fixedJson)
-        console.log('修复后成功解析JSON')
-      } catch (fixError) {
-        console.error('JSON修复也失败:', fixError.message)
+        const data = JSON.parse(jsonData)
+        console.log('token方式成功解析数据')
+        return data
+      } catch (jsonError) {
+        console.error('JSON解析失败:', jsonError.message)
+        console.error('原始数据:', jsonData)
         return null
       }
     }
 
-    // console.log('解密后的JSON数据:', data)
+    // 回退到content参数方式
+    if (encryptedContent) {
+      console.log('使用content参数方式获取数据')
+      
+      // 解密内容
+      const decryptedJson = decryptContent(encryptedContent)
 
-    return data
+      // 检查是否是有效的JSON格式
+      if (!decryptedJson.trim().startsWith('{') && !decryptedJson.trim().startsWith('[')) {
+        console.error('可能的原因: 加解密不匹配或数据损坏')
+        return null
+      }
+
+      // 解析为JSON对象
+      let data
+      try {
+        data = JSON.parse(decryptedJson)
+      } catch (jsonError) {
+        console.error('JSON解析失败:', jsonError.message)
+        console.error('原始数据:', decryptedJson)
+
+        // 尝试修复常见的JSON问题
+        try {
+          const fixedJson = decryptedJson
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // 移除控制字符
+            .replace(/\\n/g, '\\\\n') // 修复换行符
+            .replace(/\\n/g, '\\\\n') // 修复回车符
+            .replace(/\\t/g, '\\\\t') // 修复制表符
+
+          data = JSON.parse(fixedJson)
+          console.log('修复后成功解析JSON')
+        } catch (fixError) {
+          console.error('JSON修复也失败:', fixError.message)
+          return null
+        }
+      }
+
+      console.log('content方式成功解析数据')
+      return data
+    }
+
+    console.warn('未找到token或content参数')
+    return null
   } catch (error) {
     console.error('解密过程失败:', error)
     return null
@@ -132,10 +234,10 @@ const getDecryptedContent = () => {
 /**
  * 页面加载完成后自动执行解密
  */
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('开始解密URL参数中的content...')
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('开始解密URL参数中的内容...')
 
-  const decryptedData = getDecryptedContent()
+  const decryptedData = await getDecryptedContent()
 
   if (decryptedData) {
     // console.log('成功解密数据:', decryptedData)
@@ -323,5 +425,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 })
 
-// 也可以手动调用解密
+// 也可以手动调用解密（异步）
 window.decryptPreviewContent = getDecryptedContent

@@ -5,7 +5,8 @@
       <div class="editor-preview-container">
         <!-- 编辑器区域 -->
         <div class="editor-panel" :style="{ width: isPreviewMode ? '0px' : editorWidth + 'px' }"
-          :class="{ 'preview-mode': isPreviewMode }">
+          :class="{ 'preview-mode': isPreviewMode, 'drag-over': isDragOver }" @dragover.prevent="handleDragOver"
+          @dragenter.prevent="handleDragEnter" @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop">
           <!-- 编辑器工具栏 -->
           <div class="editor-toolbar">
             <div class="editor-tabs">
@@ -429,6 +430,7 @@ const shareSizeInfo = ref({ // 分享内容大小信息
 // 文件导入相关状态
 const fileInput = ref<HTMLInputElement>() // 文件输入框引用
 const isImporting = ref(false) // 是否正在导入
+const isDragOver = ref(false) // 是否正在拖拽悬停
 
 // 设置相关状态
 const currentSettingTab = ref('html') // 当前设置标签页
@@ -616,6 +618,91 @@ const formatFileSize = (bytes: number): string => {
   const sizes = ['B', 'KB', 'MB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+// 拖拽事件处理函数
+const handleDragOver = (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  // 添加拖拽悬停样式
+  isDragOver.value = true
+}
+
+const handleDragEnter = (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  isDragOver.value = true
+}
+
+const handleDragLeave = (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  // 检查是否真的离开了编辑器面板
+  const editorPanel = event.currentTarget as HTMLElement
+  if (!editorPanel.contains(event.relatedTarget as Node)) {
+    isDragOver.value = false
+  }
+}
+
+const handleDrop = async (event: DragEvent) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  isDragOver.value = false
+
+  const files = event.dataTransfer?.files
+  if (!files || files.length === 0) {
+    return
+  }
+
+  const file = files[0]
+
+  // 检查文件类型
+  const fileName = file.name.toLowerCase()
+  const isHtmlFile = fileName.endsWith('.html') || fileName.endsWith('.htm') ||
+    file.type === 'text/html' || file.type === 'application/html'
+
+  if (!isHtmlFile) {
+    console.error('请拖入HTML文件')
+    alert('请拖入 .html 或 .htm 文件')
+    return
+  }
+
+  // 检查文件大小（限制10MB）
+  const maxSize = 10 * 1024 * 1024
+  if (file.size > maxSize) {
+    console.error('文件过大')
+    alert('文件过大，请拖入小于10MB的文件')
+    return
+  }
+
+  try {
+    isImporting.value = true
+
+    // 读取文件内容
+    const fileContent = await readFileContent(file)
+
+    // 解析文件内容
+    const parsedData = await parseShareFileContent(fileContent)
+
+    // 应用解析的数据到当前编辑器
+    await applyImportedData(parsedData)
+
+    console.log('拖拽文件导入成功:', parsedData.title || '未命名项目')
+
+    // 显示成功提示（可选）
+    // alert('文件导入成功！')
+
+  } catch (error) {
+    console.error('拖拽文件导入失败:', error)
+    const errorMessage = error instanceof Error ? error.message : '未知错误'
+    alert(`文件导入失败: ${errorMessage}`)
+  } finally {
+    isImporting.value = false
+  }
 }
 
 // 处理文件导入
@@ -1306,6 +1393,32 @@ onUnmounted(() => {
   position: relative;
   // 使用transform动画替代width动画，避免重排
   transition: transform 0.3s ease, opacity 0.3s ease, width 0.3s ease; // 添加transform动画
+
+  // 拖拽悬停样式
+  &.drag-over {
+    background: #2a2a2a;
+    border: 2px dashed #007acc;
+
+    // 添加拖拽提示文字
+    &::after {
+      content: "📁 拖入HTML文件 (.html, .htm)";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #007acc;
+      font-size: 16px;
+      font-weight: bold;
+      text-align: center;
+      pointer-events: none;
+      z-index: 1000;
+      background: rgba(42, 42, 42, 0.95);
+      padding: 15px 25px;
+      border-radius: 8px;
+      border: 2px solid #007acc;
+      box-shadow: 0 4px 12px rgba(0, 122, 204, 0.3);
+    }
+  }
 
   &.preview-mode {
     opacity: 0; // 预览模式下完全透明

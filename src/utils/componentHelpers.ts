@@ -776,18 +776,22 @@ export const parseShareFileContent = async (fileContent: string): Promise<Parsed
       const cssLinksMatch = settingsContent.match(/<css-links>([\s\S]*?)<\/css-links>/)
       if (cssLinksMatch) {
         const cssLinksContent = cssLinksMatch[1]
-        const linkMatches = cssLinksContent.match(/<link[^>]*>/g) || []
-        cssLinks = linkMatches.map(link => link.replace(/\/\*.*?\*\/|\/\/.*$/g, '').trim()).filter(Boolean)
+        // 新格式：每行一个链接内容，去除前后空格后非空
+        const linkLines = cssLinksContent.split('\n').map(line => line.trim()).filter(Boolean)
+        cssLinks = linkLines
         console.log('解析的cssLinks数量:', cssLinks.length)
+        console.log('CSS链接内容预览:', cssLinks.slice(0, 3))
       }
 
       // 提取 JS 链接 (匹配 js-links 标签)
       const jsLinksMatch = settingsContent.match(/<js-links>([\s\S]*?)<\/js-links>/)
       if (jsLinksMatch) {
         const jsLinksContent = jsLinksMatch[1]
-        const scriptMatches = jsLinksContent.match(/<script[^>]*><\/script>/g) || []
-        jsLinks = scriptMatches.map(script => script.replace(/\/\*.*?\*\/|\/\/.*$/g, '').trim()).filter(Boolean)
+        // 新格式：每行一个链接内容，去除前后空格后非空
+        const scriptLines = jsLinksContent.split('\n').map(line => line.trim()).filter(Boolean)
+        jsLinks = scriptLines
         console.log('解析的jsLinks数量:', jsLinks.length)
+        console.log('JS链接内容预览:', jsLinks.slice(0, 3))
       }
     } else {
       console.log('未找到settings部分')

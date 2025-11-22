@@ -60,10 +60,10 @@ ${data.css}
 ${data.headHtmlContent}
 </head-metadata>
 <css-links>
-${generateCssLinks(data.cssLinks)}
+${data.cssLinks.join('\n')}
 </css-links>
 <js-links>
-${generateJsLinks(data.jsLinks)}
+${data.jsLinks.join('\n')}
 </js-links>
 </settings>
 `

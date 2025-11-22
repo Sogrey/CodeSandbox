@@ -231,8 +231,7 @@ import {
   removeJsLink,
   downloadHtml,
   encryptContent,
-  checkShareContentSize,
-  optimizedEncryptContent
+  checkShareContentSize
 } from '@/utils/componentHelpers'
 import type { FileInfo } from '@/utils/componentHelpers'
 
@@ -660,6 +659,12 @@ const handleDrop = async (event: DragEvent) => {
 
   const file = files[0]
 
+  if (!file) {
+    console.error('请拖入HTML文件')
+    alert('请拖入 .html 或 .htm 文件')
+    return
+  }
+
   // 检查文件类型
   const fileName = file.name.toLowerCase()
   const isHtmlFile = fileName.endsWith('.html') || fileName.endsWith('.htm') ||
@@ -725,7 +730,6 @@ const handleFileUpload = async (event: Event) => {
   }
 
   // 检查文件类型
-  const validTypes = ['text/html', 'application/html', '.html', '.htm']
   const fileName = file.name.toLowerCase()
   const isHtmlFile = fileName.endsWith('.html') || fileName.endsWith('.htm') ||
     file.type === 'text/html' || file.type === 'application/html'

@@ -555,10 +555,10 @@ KTX2Loader.BasisWorker = function () {
 	let transcoderPending;
 	let BasisModule;
 
-	const EngineFormat = _EngineFormat; // eslint-disable-line no-undef
-	const EngineType = _EngineType; // eslint-disable-line no-undef
-	const TranscoderFormat = _TranscoderFormat; // eslint-disable-line no-undef
-	const BasisFormat = _BasisFormat; // eslint-disable-line no-undef
+	const EngineFormat = _EngineFormat;  
+	const EngineType = _EngineType;  
+	const TranscoderFormat = _TranscoderFormat;  
+	const BasisFormat = _BasisFormat;  
 
 	self.addEventListener( 'message', function ( e ) {
 
@@ -600,7 +600,7 @@ KTX2Loader.BasisWorker = function () {
 		transcoderPending = new Promise( ( resolve ) => {
 
 			BasisModule = { wasmBinary, onRuntimeInitialized: resolve };
-			BASIS( BasisModule ); // eslint-disable-line no-undef
+			BASIS( BasisModule );  
 
 		} ).then( () => {
 

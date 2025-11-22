@@ -395,7 +395,7 @@ var Tween = /** @class */ (function () {
         this._startTime = 0;
         this._easingFunction = Easing.Linear.None;
         this._interpolationFunction = Interpolation.Linear;
-        // eslint-disable-next-line
+         
         this._chainedTweens = [];
         this._onStartCallbackFired = false;
         this._onEveryStartCallbackFired = false;
@@ -637,7 +637,7 @@ var Tween = /** @class */ (function () {
         this._interpolationFunction = interpolationFunction;
         return this;
     };
-    // eslint-disable-next-line
+     
     Tween.prototype.chain = function () {
         var tweens = [];
         for (var _i = 0; _i < arguments.length; _i++) {

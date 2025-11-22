@@ -36784,9 +36784,9 @@ const cdl = /*@__PURE__*/ Fn( ( [
 	const v = max$1( color.rgb.mul( slope ).add( offset ), 0.0 ).toVar();
 	const pv = v.pow( power ).toVar();
 
-	If( v.r.greaterThan( 0.0 ), () => { v.r.assign( pv.r ); } ); // eslint-disable-line
-	If( v.g.greaterThan( 0.0 ), () => { v.g.assign( pv.g ); } ); // eslint-disable-line
-	If( v.b.greaterThan( 0.0 ), () => { v.b.assign( pv.b ); } ); // eslint-disable-line
+	If( v.r.greaterThan( 0.0 ), () => { v.r.assign( pv.r ); } );  
+	If( v.g.greaterThan( 0.0 ), () => { v.g.assign( pv.g ); } );  
+	If( v.b.greaterThan( 0.0 ), () => { v.b.assign( pv.b ); } );  
 
 	v.assign( luma.add( v.sub( luma ).mul( saturation ) ) );
 

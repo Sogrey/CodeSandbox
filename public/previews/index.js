@@ -73,46 +73,81 @@ const decryptContent = (encryptedData, key = 'CodeSandbox2025') => {
   }
 }
 
-// 引入 IndexedDB 助手
-if (typeof window !== 'undefined') {
-  const script = document.createElement('script')
-  script.src = '../utils/indexedDBHelper.js'
-  document.head.appendChild(script)
-}
-
 /**
- * 等待 IndexedDB 助手加载完成
- */
-const waitForIndexedDBHelper = () => {
-  return new Promise((resolve) => {
-    if (window.getDataFromIndexedDB) {
-      resolve(true)
-      return
-    }
-    
-    const checkInterval = setInterval(() => {
-      if (window.getDataFromIndexedDB) {
-        clearInterval(checkInterval)
-        resolve(true)
-      }
-    }, 50)
-  })
-}
-
-/**
- * 从 IndexedDB 获取数据并立即清理（使用助手函数）
+ * 从 IndexedDB 获取数据并立即清理
  */
 const getDataFromIndexedDB = async (token) => {
   try {
-    // 等待助手加载完成
-    await waitForIndexedDBHelper()
-    
-    // 使用助手函数获取数据
-    return await window.getDataFromIndexedDB(token)
+    // 检查 IndexedDB 支持
+    if (!window.indexedDB) {
+      console.warn('浏览器不支持 IndexedDB')
+      return null
+    }
+
+    // 打开 IndexedDB
+    const db = await openIndexedDB()
+    const transaction = db.transaction(['previews'], 'readwrite')
+    const store = transaction.objectStore('previews')
+
+    // 获取数据
+    const request = store.get(token)
+
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => {
+        const data = request.result
+
+        if (!data) {
+          console.warn('未找到token对应的数据')
+          resolve(null)
+          return
+        }
+
+        if (data.used) {
+          console.warn('数据已被使用，可能重复访问')
+          resolve(null)
+          return
+        }
+
+        // 立即标记为已使用并删除（一次性使用）
+        const deleteRequest = store.delete(token)
+        deleteRequest.onsuccess = () => {
+          console.log('数据已清理，token:', token)
+        }
+        deleteRequest.onerror = () => {
+          console.warn('数据清理失败:', deleteRequest.error)
+        }
+
+        resolve(data.content)
+      }
+
+      request.onerror = () => {
+        console.error('获取数据失败:', request.error)
+        reject(request.error)
+      }
+    })
   } catch (error) {
     console.error('IndexedDB操作失败:', error)
     return null
   }
+}
+
+/**
+ * 打开 IndexedDB 数据库
+ */
+const openIndexedDB = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('CodeSandboxDB', 1)
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve(request.result)
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result
+      if (!db.objectStoreNames.contains('previews')) {
+        db.createObjectStore('previews')
+      }
+    }
+  })
 }
 
 /**
@@ -129,7 +164,7 @@ const getDecryptedContent = async () => {
     if (token) {
       console.log('使用token方式获取数据')
       const jsonData = await getDataFromIndexedDB(token)
-      
+
       if (!jsonData) {
         console.error('未找到有效的token数据')
         return null
@@ -150,7 +185,7 @@ const getDecryptedContent = async () => {
     // 回退到content参数方式
     if (encryptedContent) {
       console.log('使用content参数方式获取数据')
-      
+
       // 解密内容
       const decryptedJson = decryptContent(encryptedContent)
 

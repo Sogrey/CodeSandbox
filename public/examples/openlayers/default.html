@@ -7,47 +7,47 @@
   <div id="map"></div>
 </template>
 <script>
-var gaodeMapLayer = new ol.layer.Tile({
-  title: '高德地图',
-  source: new ol.source.XYZ({
-    url: 'http://wprd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}',
-    wrapX: false,
-  }),
-})
+  var gaodeMapLayer = new ol.layer.Tile({
+    title: '高德地图',
+    source: new ol.source.XYZ({
+      url: 'http://wprd0{1-4}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}',
+      wrapX: false,
+    }),
+  })
 
-var map = new ol.Map({
-  layers: [gaodeMapLayer],
-  view: new ol.View({
-    center: ol.proj.transform([103.23, 35.33], 'EPSG:4326', 'EPSG:3857'), //地图初始中心点
-    projection: 'EPSG:3857',
-    zoom: 4,
-    minZoom: 1,
-  }),
-  target: 'map',
-})
+  var map = new ol.Map({
+    layers: [gaodeMapLayer],
+    view: new ol.View({
+      center: ol.proj.transform([103.23, 35.33], 'EPSG:4326', 'EPSG:3857'), //地图初始中心点
+      projection: 'EPSG:3857',
+      zoom: 4,
+      minZoom: 1,
+    }),
+    target: 'map',
+  })
 </script>
 <style>
-html,
-body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
 
-#map {
-  width: 100%;
-  height: 100%;
-}
+  #map {
+    width: 100%;
+    height: 100%;
+  }
 
-.ol-zoom {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  top: auto;
-  left: auto;
-}
+  .ol-zoom {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    top: auto;
+    left: auto;
+  }
 </style>
 
 <!-- Settings Section - 设置数据，将被自动解析 -->

@@ -343,6 +343,12 @@ https: (page = './examples/cesium/default.html')
 - 请在 [https://account.mapbox.com](https://account.mapbox.com) 注册并获取访问令牌
 - 在示例中替换 `'YOUR-ACCESS-TOKEN'` 为您的实际令牌
 
+**OpenLayers 数据文件**：
+- 中国地图示例需要 `public/datas/100000_full.json` 数据文件
+- 该文件包含中国省界地理信息，大小约569KB
+- 文件基于GeoJSON格式，支持完整的地理数据解析
+- 支持鼠标交互、样式定制和坐标变换等高级功能
+
 ### 示例模板位置
 
 示例数据文件应放置在 `public/examples/` 目录下，支持以下结构：
@@ -363,9 +369,12 @@ public/
 │   ├── three.js/         # Three.js示例
 │   │   └── default.html
 │   ├── openlayers/       # OpenLayers示例
-│   │   └── default.html
+│   │   ├── default.html  # 基础OpenLayers示例
+│   │   └── china.html    # 中国地图示例（含GeoJSON数据）
 │   └── mapbox/           # Mapbox示例
 │       └── default.html
+├── datas/               # 地理数据文件夹
+│   └── 100000_full.json # 中国省界GeoJSON数据
 └── previews/             # 预览页面文件夹
     ├── index.js          # 通用预览脚本
     ├── default/          # 默认引擎预览
@@ -374,6 +383,27 @@ public/
     ├── openlayers/      # OpenLayers引擎预览
     └── mapbox/          # Mapbox引擎预览
 ```
+
+### OpenLayers 示例说明
+
+#### 基础示例 (default.html)
+- **功能**：简单的OpenLayers地图展示
+- **特性**：基础地图控件、交互功能
+- **适用**：学习OpenLayers基础用法
+
+#### 中国地图示例 (china.html)
+- **功能**：中国省界地图展示
+- **数据**：基于GeoJSON的中国省界数据 (`public/datas/100000_full.json`)
+- **特性**：
+  - 矢量图层加载和样式设置
+  - 鼠标悬停交互效果
+  - 自定义地图控件样式
+  - 坐标系转换 (EPSG:4326 → EPSG:3857)
+- **交互**：
+  - 鼠标移动高亮显示省份
+  - 动态样式切换
+  - 控制台坐标输出
+- **适用**：中国地理信息可视化、省级数据展示
 
 **文件用途说明**：
 

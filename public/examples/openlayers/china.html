@@ -1,0 +1,108 @@
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>openlayers</engine-type>
+<title>OpenLayers 示例</title>
+<meta name="description" content="这是一个简单 OpenLayers 示例" />
+<template>
+  <div id="map"></div>
+</template>
+<script>
+console.log(ol)
+
+// 矢量源
+const vectorSource = new ol.source.Vector({
+  url: '../../datas/100000_full.json',
+  format: new ol.format.GeoJSON(),
+})
+
+// 默认样式
+const defaultStyle = new ol.style.Style({
+  fill: new ol.style.Fill({
+    color: 'rgba(255, 255, 255, 0.2)',
+  }),
+  stroke: new ol.style.Stroke({
+    color: '#ffcc33',
+    width: 2,
+  })
+})
+
+// 创建图层
+var chinaLayer = new ol.layer.Vector({
+  source: vectorSource,
+  style: defaultStyle
+})
+
+// 初始化map
+var map = new ol.Map({
+  layers: [chinaLayer],
+  view: new ol.View({
+    center: ol.proj.transform([103.23, 35.33], 'EPSG:4326', 'EPSG:3857'), //地图初始中心点
+    projection: 'EPSG:3857',
+    zoom: 4,
+    minZoom: 1,
+  }),
+  target: 'map',
+})
+
+let lastFeature;
+
+// 鼠标移动事件
+map.on('pointermove', (e) => {
+  // 获取源中所有瓦片统一设置样式
+  // const allFeatures = vectorSource.getFeatures()
+  // allFeatures.forEach((f)=>{
+  //   f.setStyle(defaultStyle)
+  // })
+
+  // 找到最后一个选中的瓦片，单独恢复默认样式
+  if (lastFeature) {
+    lastFeature.setStyle(defaultStyle)
+  }
+  // 获取当前鼠标位置
+  const coordinate = e.coordinate;
+  console.log(coordinate)
+  // 找当前鼠标i位置是否存在图层要素
+  const features = vectorSource.getFeaturesAtCoordinate(coordinate)
+  if (features[0]) {
+    lastFeature = features[0]
+    // 找到的元素，设置新样式
+    lastFeature.setStyle(
+      new ol.style.Style({
+        fill: new ol.style.Fill({
+          color: 'rgba(36, 255, 36, 0.5)',
+        })
+      }),
+    )
+  }
+})
+</script>
+<style>
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+  }
+
+  .ol-zoom {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    top: auto;
+    left: auto;
+  }
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+  <head-metadata> </head-metadata>
+  <css-links> </css-links>
+  <js-links> </js-links>
+</settings>

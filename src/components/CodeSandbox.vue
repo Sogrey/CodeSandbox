@@ -1675,7 +1675,8 @@ onUnmounted(() => {
     position: absolute;
     top: 16px;
     left: 16px;
-    width: 300px;
+    min-width: 200px;
+    max-width: 300px;
     background: rgba(2, 121, 55, 0.842); // 灰度半透明背景
     border: 3px solid rgba(255, 0, 221, 0.548);
     border-radius: 10px;
@@ -1692,7 +1693,7 @@ onUnmounted(() => {
     }
 
     .pageDescription {
-      font-weight:700;
+      font-weight: 700;
       font-size: 12px;
     }
   }

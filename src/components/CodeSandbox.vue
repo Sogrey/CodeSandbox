@@ -112,7 +112,8 @@
         <div class="preview-panel"
           :style="{ width: isPreviewMode ? '100%' : 'calc(100% - ' + (editorWidth + 3) + 'px)' }">
           <div class="preview-header">
-            <span>{{ pageTitle }}: {{ pageDescription }}</span>
+            <h3>{{ pageTitle }}</h3>
+            <div class="pageDescription">{{ pageDescription }}</div>
           </div>
           <iframe ref="previewFrame" class="preview-frame">
           </iframe>
@@ -1672,17 +1673,28 @@ onUnmounted(() => {
 
   .preview-header {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0, 0, 0, 0.4); // 灰度半透明背景
-    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    top: 16px;
+    left: 16px;
+    width: 300px;
+    background: rgba(2, 121, 55, 0.842); // 灰度半透明背景
+    border: 3px solid rgba(255, 0, 221, 0.548);
+    border-radius: 10px;
     padding: 8px 16px;
     font-size: 14px;
-    font-weight: 600;
     color: white;
-    text-align: center; // 文字居中显示
     z-index: 5; // 确保显示在预览区域上方
+
+    h3 {
+      text-align: center; // 文字居中显示
+      color: #960ae7;
+      font-weight: bolder;
+      text-shadow: #118bee 10px 3px 10px;
+    }
+
+    .pageDescription {
+      font-weight:700;
+      font-size: 12px;
+    }
   }
 
   .preview-frame {

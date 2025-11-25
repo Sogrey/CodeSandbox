@@ -524,22 +524,76 @@ public/
 - **脚本执行优化**：等待第三方库完全加载后再执行用户脚本
 - **错误容错处理**：部分依赖加载失败不影响用户脚本执行
 - **内容安全解析**：完整支持HTML、CSS、JS内容的安全渲染
-- **压缩优化版本**：提供 `index.min.js` 混淆加密版本
+- **解密算法实现**：XOR + UTF-8 + URL-safe Base64 三层解密机制
+  - XOR解密：使用固定密钥进行数据解密
+  - UTF-8解码：正确处理Unicode字符，支持中英文混合内容
+  - URL-safe Base64解码：确保URL传递的数据安全解码
+- **编码问题处理**：自动检测并处理URL编码问题
+  - 检测URL编码字符：%[0-9A-Fa-f]{2} 正则匹配
+  - 自动解码：decodeURIComponent() 处理编码字符
+  - 填充处理：自动添加Base64填充字符确保解码成功
+- **错误处理机制**：完整的异常捕获和错误信息提示
+  - Base64解码失败自动回退
+  - UTF-8编码异常处理
+  - XOR解密密钥验证
+- **混淆加密版本**：提供 `index.min.js` 深度混淆加密版本
 - **安全加固**：深度变量名混淆和字符串十六进制编码，防止代码分析
 - **完整功能保持**：混淆版本保持所有原始功能，确保预览系统正常运行
 - **文件对比**：
-  - 原始版本 (index.js)：12,676 bytes
+  - 原始版本 (index.js)：12,676 bytes，包含完整注释和清晰函数名
   - 混淆加密版本 (index.min.js)：21,302 bytes (安全加强版)
 
 #### 混淆加密技术详情
 
-**混淆技术**：
+**混淆技术实现**：
 - **变量名混淆**：所有变量名替换为无意义字符，消除代码可读性
 - **字符串编码**：字符串内容转换为十六进制编码，防止直接读取
 - **控制流混淆**：打乱代码执行流程，增加逆向分析难度
 - **函数扁平化**：将嵌套函数结构转换为扁平结构，提高分析成本
+- **代码压缩**：移除所有注释、空白字符，减小代码体积
 
-**安全效果**：
+**文件实现对比**：
+- **index.js**：原始版本，包含详细注释、函数命名和清晰结构
+- **index.min.js**：混淆加密版本，所有变量名和字符串都被混淆，无注释
+
+**解密函数实现细节**：
+```javascript
+const decryptContent = (encryptedData, key = 'CodeSandbox2025') => {
+  try {
+    // 处理URL编码问题
+    let processedData = encryptedData
+    if (/%[0-9A-Fa-f]{2}/.test(encryptedData)) {
+      processedData = decodeURIComponent(encryptedData)
+    }
+    
+    // URL-safe Base64转标准Base64
+    const base64String = processedData
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+    
+    // 添加填充字符
+    let paddedBase64 = base64String
+    while (paddedBase64.length % 4) {
+      paddedBase64 += '='
+    }
+    
+    // 多层解密处理
+    const base64Decoded = atob(paddedBase64)
+    const utf8Bytes = new Uint8Array(base64Decoded.split('').map(char => char.charCodeAt(0)))
+    const decoded = new TextDecoder().decode(utf8Bytes)
+    
+    // XOR解密
+    return decoded.split('').map((char, index) => {
+      const keyChar = key[index % key.length]
+      return String.fromCharCode(char.charCodeAt(0) ^ keyChar.charCodeAt(0))
+    }).join('')
+  } catch (error) {
+    // 错误处理和回退机制
+  }
+}
+```
+
+**安全技术优势**：
 - **防止代码窃取**：深度混淆保护核心算法和业务逻辑
 - **增加逆向难度**：多层混淆技术大幅提高逆向工程成本
 - **保持功能完整**：混淆过程中严格保证代码功能不变

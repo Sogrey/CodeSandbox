@@ -857,33 +857,34 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<Pa
     const content = await response.text()
 
     // 提取模板类型
-    const typeMatch = content.match(/<engine-type>([\s\S]*?)<\/engine-type>/)
+    const typeMatch = content.match(/<engine-type>([\s\S]*?)<\/engine-type>/is)
     const engineType = typeMatch ? typeMatch[1]?.trim() : undefined
 
     // 提取 template 部分
-    const templateMatch = content.match(/<template>([\s\S]*?)<\/template>/)
+    const templateMatch = content.match(/<template>([\s\S]*?)<\/template>/is)
     const htmlContent = templateMatch ? templateMatch[1]?.trim() : ''
 
     // 提取 script 部分
     let jsType = '';
-    const scriptMatch = content.match(/<script>([\s\S]*?)<\/script>/)
+    const scriptMatch = content.match(/<script>([\s\S]*?)<\/script>/is)
     let jsContent = scriptMatch ? scriptMatch[1]?.trim() : ''
 
-    const scriptModuleMatch = content.match(/<script type="module">([\s\S]*?)<\/script>/)
+    const scriptModuleMatch = content.match(/<script\s+type=["']module["']>([\s\S]*?)<\/script>/is)
     if (scriptModuleMatch) {
       jsType = 'module';
       jsContent = scriptModuleMatch[1]?.trim()
     }
 
     // 提取 style 部分
-    const styleMatch = content.match(/<style>([\s\S]*?)<\/style>/)
+    const styleMatch = content.match(/<style>([\s\S]*?)<\/style>/is)
     const cssContent = styleMatch ? styleMatch[1]?.trim() : ''
 
     // 提取标题和描述
     const titleMatch = content.match(/<title>([\s\S]*?)<\/title>/)
     const title = titleMatch ? (titleMatch[1]?.trim() || 'CodeSandbox Preview') : 'CodeSandbox Preview'
 
-    const descriptionMatch = content.match(/<meta name="description" content="([^"]*)"\s*\/?>/)
+    // 支持多行格式的meta description标签匹配
+    const descriptionMatch = content.match(/<meta\s+[^>]*name=["']description["'][^>]*content=["']([^"']*)["'][^>]*\/?>/is)
     const description = descriptionMatch ? (descriptionMatch[1]?.trim() || 'A code sandbox preview page') : 'A code sandbox preview page'
 
     // 提取设置数据（如果存在）
@@ -894,17 +895,17 @@ export const parseDemoHtml = async (fileUrl: string = './demo.html'): Promise<Pa
     // 检查是否是扩展的模板文件（包含设置部分）
     if (content.includes('<settings>')) {
       // 提取 head-metadata
-      const headMetadataMatch = content.match(/<head-metadata>([\s\S]*?)<\/head-metadata>/)
+      const headMetadataMatch = content.match(/<head-metadata>([\s\S]*?)<\/head-metadata>/is)
       headHtmlContent = headMetadataMatch ? (headMetadataMatch[1]?.trim() || '') : ''
 
       // 提取 css-links
-      const cssLinksMatch = content.match(/<css-links>([\s\S]*?)<\/css-links>/)
+      const cssLinksMatch = content.match(/<css-links>([\s\S]*?)<\/css-links>/is)
       if (cssLinksMatch) {
         cssLinks = cssLinksMatch[1]?.trim()?.split('\n').filter(link => link.trim() !== '') || []
       }
 
       // 提取 js-links
-      const jsLinksMatch = content.match(/<js-links>([\s\S]*?)<\/js-links>/)
+      const jsLinksMatch = content.match(/<js-links>([\s\S]*?)<\/js-links>/is)
       if (jsLinksMatch) {
         jsLinks = jsLinksMatch[1]?.trim()?.split('\n').filter(link => link.trim() !== '') || []
       }

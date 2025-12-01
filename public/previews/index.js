@@ -168,7 +168,8 @@ const getDecryptedContent = async () => {
       if (!jsonData) {
         console.error('未找到有效的token数据，跳转到404页面')
         // 跳转到404页面显示错误信息
-        window.location.href = './404.html?error=token_not_found'
+        console.log('即将跳转到404页面...')
+        window.location.replace('./404.html?error=token_not_found')
         return null
       }
 
@@ -182,7 +183,8 @@ const getDecryptedContent = async () => {
         console.error('原始数据:', jsonData)
         console.error('token数据解析失败，跳转到404页面')
         // 跳转到404页面显示错误信息
-        window.location.href = './404.html?error=json_parse_failed'
+        console.log('即将跳转到404页面...')
+        window.location.replace('./404.html?error=json_parse_failed')
         return null
       }
     }
@@ -199,7 +201,8 @@ const getDecryptedContent = async () => {
         console.error('可能的原因: 加解密不匹配或数据损坏')
         console.error('content参数解密失败，跳转到404页面')
         // 跳转到404页面显示错误信息
-        window.location.href = './404.html?error=content_decrypt_failed'
+        console.log('即将跳转到404页面...')
+        window.location.replace('./404.html?error=content_decrypt_failed')
         return null
       }
 
@@ -225,7 +228,8 @@ const getDecryptedContent = async () => {
           console.error('JSON修复也失败:', fixError.message)
           console.error('JSON修复失败，跳转到404页面')
           // 跳转到404页面显示错误信息
-          window.location.href = './404.html?error=json_fix_failed'
+          console.log('即将跳转到404页面...')
+          window.location.replace('./404.html?error=json_fix_failed')
           return null
         }
       }
@@ -236,13 +240,15 @@ const getDecryptedContent = async () => {
 
     console.warn('未找到token或content参数，跳转到404页面')
     // 跳转到404页面显示错误信息
-    window.location.href = './404.html?error=no_parameters'
+    console.log('即将跳转到404页面...')
+    window.location.replace('./404.html?error=no_parameters')
     return null
   } catch (error) {
     console.error('解密过程失败:', error)
     console.error('解密过程异常，跳转到404页面')
     // 跳转到404页面显示错误信息
-    window.location.href = './404.html?error=decrypt_exception'
+    console.log('即将跳转到404页面...')
+    window.location.replace('./404.html?error=decrypt_exception')
     return null
   }
 }
@@ -268,6 +274,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (!decryptedData) {
     console.error('无有效解密数据，停止处理')
+    console.log('检查是否需要跳转到404页面...')
+    // 确保跳转到404页面
+    setTimeout(() => {
+      if (window.location.pathname !== '/404.html' && !window.location.pathname.endsWith('404.html')) {
+        console.log('强制跳转到404页面')
+        window.location.replace('./404.html?error=no_valid_data')
+      }
+    }, 100)
     return
   }
 

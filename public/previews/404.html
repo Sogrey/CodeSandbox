@@ -209,8 +209,50 @@
         // 尝试获取更多错误信息
         try {
             const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
             const token = urlParams.get('token');
             const content = urlParams.get('content');
+
+            // 显示错误类型
+            const errorTitle = document.querySelector('.error-title');
+            const errorDescription = document.querySelector('.error-description');
+            
+            const errorMessages = {
+                'token_not_found': {
+                    title: 'Token数据未找到',
+                    description: '分享链接中的token已过期、无效或已被使用。请重新获取分享链接。'
+                },
+                'json_parse_failed': {
+                    title: '数据解析失败',
+                    description: 'Token数据格式错误或损坏。请重新生成分享链接。'
+                },
+                'content_decrypt_failed': {
+                    title: '内容解密失败',
+                    description: '加密内容无法正确解密，可能是密钥不匹配或数据损坏。'
+                },
+                'json_fix_failed': {
+                    title: '数据修复失败',
+                    description: '数据格式严重损坏，无法自动修复。请重新生成内容。'
+                },
+                'no_parameters': {
+                    title: '缺少必要参数',
+                    description: '分享链接缺少必要的数据参数。请检查链接完整性。'
+                },
+                'decrypt_exception': {
+                    title: '解密过程异常',
+                    description: '解密过程中发生未知错误。请稍后重试。'
+                },
+                'no_valid_data': {
+                    title: '无有效数据',
+                    description: '无法获取有效的预览数据。请重新生成分享链接。'
+                }
+            };
+
+            if (error && errorMessages[error]) {
+                errorTitle.textContent = errorMessages[error].title;
+                errorDescription.textContent = errorMessages[error].description;
+                console.log('错误类型:', error, '-', errorMessages[error].title);
+            }
 
             if (token) {
                 console.error('Token参数:', token);

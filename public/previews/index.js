@@ -169,7 +169,13 @@ const getDecryptedContent = async () => {
         console.error('未找到有效的token数据，跳转到404页面')
         // 跳转到404页面显示错误信息
         console.log('即将跳转到404页面...')
-        window.location.replace('./404.html?error=token_not_found')
+        setTimeout(() => {
+          console.log('执行跳转到404页面')
+          // 使用window.location.replace避免Vue Router拦截，并移除浏览器历史记录
+          // 考虑base路径配置
+          const baseUrl = window.location.origin + '/CodeSandbox'
+          window.location.replace(baseUrl + '/previews/404.html?error=token_not_found')
+        }, 50)
         return null
       }
 
@@ -184,7 +190,11 @@ const getDecryptedContent = async () => {
         console.error('token数据解析失败，跳转到404页面')
         // 跳转到404页面显示错误信息
         console.log('即将跳转到404页面...')
-        window.location.replace('./404.html?error=json_parse_failed')
+        setTimeout(() => {
+          console.log('执行跳转到404页面 (JSON解析失败)')
+          const baseUrl = window.location.origin + '/CodeSandbox'
+          window.location.replace(baseUrl + '/previews/404.html?error=json_parse_failed')
+        }, 50)
         return null
       }
     }
@@ -202,7 +212,11 @@ const getDecryptedContent = async () => {
         console.error('content参数解密失败，跳转到404页面')
         // 跳转到404页面显示错误信息
         console.log('即将跳转到404页面...')
-        window.location.replace('./404.html?error=content_decrypt_failed')
+        setTimeout(() => {
+          console.log('执行跳转到404页面 (内容解密失败)')
+          const baseUrl = window.location.origin + '/CodeSandbox'
+          window.location.replace(baseUrl + '/previews/404.html?error=content_decrypt_failed')
+        }, 50)
         return null
       }
 
@@ -229,7 +243,11 @@ const getDecryptedContent = async () => {
           console.error('JSON修复失败，跳转到404页面')
           // 跳转到404页面显示错误信息
           console.log('即将跳转到404页面...')
-          window.location.replace('./404.html?error=json_fix_failed')
+          setTimeout(() => {
+            console.log('执行跳转到404页面 (JSON修复失败)')
+            const baseUrl = window.location.origin + '/CodeSandbox'
+            window.location.replace(baseUrl + '/previews/404.html?error=json_fix_failed')
+          }, 50)
           return null
         }
       }
@@ -241,14 +259,22 @@ const getDecryptedContent = async () => {
     console.warn('未找到token或content参数，跳转到404页面')
     // 跳转到404页面显示错误信息
     console.log('即将跳转到404页面...')
-    window.location.replace('./404.html?error=no_parameters')
+    setTimeout(() => {
+      console.log('执行跳转到404页面 (无参数)')
+      const baseUrl = window.location.origin + '/CodeSandbox'
+      window.location.replace(baseUrl + '/previews/404.html?error=no_parameters')
+    }, 50)
     return null
   } catch (error) {
     console.error('解密过程失败:', error)
     console.error('解密过程异常，跳转到404页面')
     // 跳转到404页面显示错误信息
     console.log('即将跳转到404页面...')
-    window.location.replace('./404.html?error=decrypt_exception')
+    setTimeout(() => {
+      console.log('执行跳转到404页面 (解密异常)')
+      const baseUrl = window.location.origin + '/CodeSandbox'
+      window.location.replace(baseUrl + '/previews/404.html?error=decrypt_exception')
+    }, 50)
     return null
   }
 }
@@ -277,11 +303,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('检查是否需要跳转到404页面...')
     // 确保跳转到404页面
     setTimeout(() => {
-      if (window.location.pathname !== '/404.html' && !window.location.pathname.endsWith('404.html')) {
+      if (window.location.pathname !== '/previews/404.html' && !window.location.pathname.endsWith('404.html')) {
         console.log('强制跳转到404页面')
-        window.location.replace('./404.html?error=no_valid_data')
+        const baseUrl = window.location.origin + '/CodeSandbox'
+        window.location.replace(baseUrl + '/previews/404.html?error=no_valid_data')
       }
-    }, 100)
+    }, 200)
     return
   }
 

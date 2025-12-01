@@ -166,7 +166,9 @@ const getDecryptedContent = async () => {
       const jsonData = await getDataFromIndexedDB(token)
 
       if (!jsonData) {
-        console.error('未找到有效的token数据')
+        console.error('未找到有效的token数据，跳转到404页面')
+        // 跳转到404页面显示错误信息
+        window.location.href = './404.html?error=token_not_found'
         return null
       }
 
@@ -178,6 +180,9 @@ const getDecryptedContent = async () => {
       } catch (jsonError) {
         console.error('JSON解析失败:', jsonError.message)
         console.error('原始数据:', jsonData)
+        console.error('token数据解析失败，跳转到404页面')
+        // 跳转到404页面显示错误信息
+        window.location.href = './404.html?error=json_parse_failed'
         return null
       }
     }
@@ -192,6 +197,9 @@ const getDecryptedContent = async () => {
       // 检查是否是有效的JSON格式
       if (!decryptedJson.trim().startsWith('{') && !decryptedJson.trim().startsWith('[')) {
         console.error('可能的原因: 加解密不匹配或数据损坏')
+        console.error('content参数解密失败，跳转到404页面')
+        // 跳转到404页面显示错误信息
+        window.location.href = './404.html?error=content_decrypt_failed'
         return null
       }
 
@@ -215,6 +223,9 @@ const getDecryptedContent = async () => {
           console.log('修复后成功解析JSON')
         } catch (fixError) {
           console.error('JSON修复也失败:', fixError.message)
+          console.error('JSON修复失败，跳转到404页面')
+          // 跳转到404页面显示错误信息
+          window.location.href = './404.html?error=json_fix_failed'
           return null
         }
       }
@@ -223,10 +234,15 @@ const getDecryptedContent = async () => {
       return data
     }
 
-    console.warn('未找到token或content参数')
+    console.warn('未找到token或content参数，跳转到404页面')
+    // 跳转到404页面显示错误信息
+    window.location.href = './404.html?error=no_parameters'
     return null
   } catch (error) {
     console.error('解密过程失败:', error)
+    console.error('解密过程异常，跳转到404页面')
+    // 跳转到404页面显示错误信息
+    window.location.href = './404.html?error=decrypt_exception'
     return null
   }
 }

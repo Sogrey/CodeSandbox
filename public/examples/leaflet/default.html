@@ -1,0 +1,62 @@
+
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/4/30 20:29:19
+页面标题: Leaflet 示例
+原始页面链接: http://localhost:5173/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 示例</title>
+<meta name="description" content="这是一个简单 Leaflet 示例" />
+<template>
+<div id="map"></div>
+</template>
+<script>
+var map = L.map('map', {
+  center: [39.9042, 116.4074],
+  zoom: 10,
+  zoomControl: true
+});
+
+var gaodeRoadLayer = L.tileLayer('https://wprd0{s}.is.autonavi.com/appmaptile?x={x}&y={y}&z={z}&lang=zh_cn&style=8&ltype=2&scl=0&size=1', {
+  subdomains: ['1', '2', '3', '4'],
+  minZoom: 3,
+  maxZoom: 18,
+  attribution: '© 高德地图'
+});
+
+gaodeRoadLayer.addTo(map);
+</script>
+<style>
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

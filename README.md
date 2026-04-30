@@ -120,14 +120,16 @@ npm run lint
 │   │   ├── Cesium/        # Cesium 3D地图库
 │   │   ├── Three.js/      # Three.js 3D图形库
 │   │   ├── openlayers/    # OpenLayers 地图库
-│   │   └── Mapbox/        # Mapbox 地图库
+│   │   ├── Mapbox/        # Mapbox 地图库
+│   │   └── leaflet/       # Leaflet 地图库
 │   ├── templates/          # 模板引擎文件
 │   │   ├── README.md      # 模板说明文档
 │   │   ├── default.html   # 默认引擎模板
 │   │   ├── cesium.html    # Cesium引擎模板
 │   │   ├── three.js.html # Three.js引擎模板
 │   │   ├── openlayers.html # OpenLayers引擎模板
-│   │   └── mapbox.html    # Mapbox引擎模板
+│   │   ├── mapbox.html    # Mapbox引擎模板
+│   │   └── leaflet.html   # Leaflet引擎模板
 │   ├── previews/           # 预览页面文件夹
 │   │   ├── README.md      # 预览说明文档
 │   │   ├── index.js       # 通用预览页面脚本
@@ -135,14 +137,16 @@ npm run lint
 │   │   ├── cesium/        # Cesium引擎预览
 │   │   ├── three.js/     # Three.js引擎预览
 │   │   ├── openlayers/    # OpenLayers引擎预览
-│   │   └── mapbox/        # Mapbox引擎预览
+│   │   ├── mapbox/        # Mapbox引擎预览
+│   │   └── leaflet/       # Leaflet引擎预览
 │   ├── examples/          # 示例数据文件夹
 │   │   ├── README.md      # 示例说明文档
 │   │   ├── default/       # 默认示例
 │   │   ├── cesium/        # Cesium示例
 │   │   ├── three.js/     # Three.js示例
 │   │   ├── openlayers/    # OpenLayers示例
-│   │   └── mapbox/       # Mapbox示例
+│   │   ├── mapbox/       # Mapbox示例
+│   │   └── leaflet/      # Leaflet示例
 │   ├── demo.html           # 演示页面
 │   └── favicon.ico         # 网站图标
 ├── .github/                # GitHub Actions
@@ -340,6 +344,7 @@ https: (page = './examples/cesium/default.html')
 - `three.js` - Three.js 3D图形引擎
 - `openlayers` - OpenLayers 地图引擎
 - `mapbox` - Mapbox 地图引擎
+- `leaflet` - Leaflet 地图引擎
 
 **Mapbox 使用注意**：
 - Mapbox 需要访问令牌才能正常使用
@@ -363,7 +368,8 @@ public/
 │   ├── cesium.html       # Cesium引擎模板
 │   ├── three.js.html     # Three.js引擎模板
 │   ├── openlayers.html   # OpenLayers引擎模板
-│   └── mapbox.html       # Mapbox引擎模板
+│   ├── mapbox.html       # Mapbox引擎模板
+│   └── leaflet.html      # Leaflet引擎模板
 ├── examples/             # 示例数据文件夹
 │   ├── default/           # 默认示例
 │   │   └── default.html
@@ -374,7 +380,9 @@ public/
 │   ├── openlayers/       # OpenLayers示例
 │   │   ├── default.html  # 基础OpenLayers示例
 │   │   └── china.html    # 中国地图示例（含GeoJSON数据）
-│   └── mapbox/           # Mapbox示例
+│   ├── mapbox/           # Mapbox示例
+│   │   └── default.html
+│   └── leaflet/          # Leaflet示例
 │       └── default.html
 ├── datas/               # 地理数据文件夹
 │   └── 100000_full.json # 中国省界GeoJSON数据

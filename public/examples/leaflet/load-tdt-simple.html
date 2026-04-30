@@ -1,0 +1,119 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/1 01:22:26
+页面标题: Leaflet 加载天地图 - 简洁示例
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 加载天地图 - 简洁示例</title>
+<meta name="description" content="天地图作为国家地理信息公共服务平台，提供权威、标准的中国地图数据服务。" />
+<template>
+<div id="map"></div>
+
+<div class="info-note">
+  天地图矢量 | 中心: 武汉 | 密钥: 示例
+</div>
+</template>
+<script>
+ // 天地图配置 (请替换为您自己的tk密钥，此处为文章示例，建议更换)
+ // 申请地址: https://www.tianditu.gov.cn/
+ const TIANDITU_TOKEN = '55b4d4eaef95384c946e9bd1b99c5610'; // 示例密钥
+
+ // 1. 初始化地图视图 (武汉区域)
+ // 注意：Leaflet坐标顺序为 [纬度, 经度]
+ const wuhanLat = 30.5217;
+ const wuhanLng = 114.3948;
+ const initZoom = 12; // 优化: 原18级过近，改为12级显示更佳
+
+ const map = L.map('map').setView([wuhanLat, wuhanLng], initZoom);
+
+ // 2. 加载天地图矢量底图 (vec_w)
+ // 优化点: 使用 https 协议避免混合内容拦截，添加 noWrap 防止重复
+ const vecLayer = L.tileLayer(
+   `https://t0.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${TIANDITU_TOKEN}`, {
+     noWrap: true, // 防止地图无限重复
+     attribution: '&copy; <a href="https://www.tianditu.gov.cn/">天地图</a>'
+   }
+ ).addTo(map);
+
+ // 3. 加载天地图矢量注记层 (cva_w) - 显示地名、路名
+ const cvaLayer = L.tileLayer(
+   `https://t0.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=${TIANDITU_TOKEN}`, {
+     noWrap: true,
+     attribution: '天地图注记'
+   }
+ ).addTo(map);
+
+ // 4. (可选) 添加一个标记点示例，展示具体位置
+ L.marker([wuhanLat, wuhanLng]).addTo(map)
+   .bindPopup('<b>武汉·示例点</b><br>经纬度: 30.5217, 114.3948')
+   .openPopup();
+
+ // 5. 异常处理：瓦片加载失败时提示 (便于排查密钥或网络问题)
+ map.on('tileerror', function(error) {
+   console.warn('天地图瓦片加载失败，请检查网络或tk密钥是否有效', error);
+   // 简单提示，避免用户无反馈
+   const infoDiv = document.querySelector('.info-note');
+   if (infoDiv && !infoDiv.innerText.includes('密钥问题')) {
+     infoDiv.style.background = 'rgba(200,0,0,0.7)';
+     infoDiv.innerText = '⚠️ 瓦片加载失败，请检查天地图密钥 tk';
+   }
+ });
+
+ // 控制台输出成功信息
+ console.log('天地图加载成功，当前中心:', wuhanLat, wuhanLng);
+</script>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+
+
+/* 可选：添加一个简单的信息角标 */
+.info-note {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+  pointer-events: none;
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

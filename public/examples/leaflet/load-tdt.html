@@ -1,0 +1,277 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/1 01:03:13
+页面标题: Leaflet 加载天地图
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 加载天地图</title>
+<meta name="description" content="天地图作为国家地理信息公共服务平台，提供权威、标准的中国地图数据服务。" />
+<template>
+<div id="map"></div>
+
+<div class="info-panel" id="info">
+  📍 当前位置: 加载中...<br>
+  🗺️ 天地图矢量图层 + 注记层
+</div>
+<div class="coord-control" id="copyCoordBtn">
+  📋 点击复制坐标
+</div>
+</template>
+<script>
+  // 天地图配置（请替换为您自己的tk密钥，此处示例密钥仅用于演示，建议到官网申请）
+  // 天地图官网申请密钥：https://www.tianditu.gov.cn/
+  const TIAN_DI_TU_TOKEN = '55b4d4eaef95384c946e9bd1b99c5610'; // 文章中示例token，有效期未知，建议替换
+
+  // 1. 初始化地图视图（武汉区域：纬度30.5217，经度114.3948）
+  // 注意：Leaflet坐标顺序为 [纬度, 经度]
+  const initialLat = 30.5217;
+  const initialLng = 114.3948;
+  const initialZoom = 16; // 缩放级别（文章中使用18，适当调整显示效果）
+
+  const map = L.map('map').setView([initialLat, initialLng], initialZoom);
+
+  // 2. 加载天地图矢量底图（vec_w）
+  // 参数说明：T=vec_w 矢量底图，T=cva_w 矢量注记层，tk为密钥
+  const vecLayer = L.tileLayer(
+    `http://t0.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${TIAN_DI_TU_TOKEN}`, {
+      noWrap: true, // 防止地图横向无限重复
+      attribution: '&copy; <a href="https://www.tianditu.gov.cn/">天地图</a>'
+    }
+  ).addTo(map);
+
+  // 3. 加载天地图矢量注记层（cva_w）- 包含地名、路名等标注
+  const cvaLayer = L.tileLayer(
+    `http://t0.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=${TIAN_DI_TU_TOKEN}`, {
+      noWrap: true,
+      attribution: '&copy; 天地图注记'
+    }
+  ).addTo(map);
+
+  // 可选：添加一个简单的基础图图层控制（便于扩展更多地图源，如影像图，此处未全部列出）
+  // 仅做演示，保持简洁
+
+  // 4. 添加标注点（Marker）
+  const marker = L.marker([initialLat, initialLng]).addTo(map);
+  // 绑定弹窗并自动打开
+  marker.bindPopup(`
+            <b>📍 武汉·示例位置</b><br>
+            纬度: ${initialLat}<br>
+            经度: ${initialLng}<br>
+            <i>欢迎使用天地图 + Leaflet</i>
+        `).openPopup();
+
+  // 可选：添加一个圆形标记增强视觉效果
+  L.circle([initialLat, initialLng], {
+    color: '#3388ff',
+    weight: 1,
+    fillColor: '#3388ff',
+    fillOpacity: 0.15,
+    radius: 30
+  }).addTo(map);
+
+  // 5. 交互增强：动态显示鼠标点击处的坐标，并更新信息面板，支持一键复制
+
+  // 获取元素
+  const infoDiv = document.getElementById('info');
+  const copyBtn = document.getElementById('copyCoordBtn');
+  let currentLatLng = {
+    lat: initialLat,
+    lng: initialLng
+  }; // 存储当前坐标
+
+  // 更新信息面板函数
+  function updateInfoPanel(lat, lng) {
+    infoDiv.innerHTML = `
+                📍 当前位置: 纬度 ${lat.toFixed(6)} , 经度 ${lng.toFixed(6)}<br>
+                🗺️ 天地图矢量图层 + 注记层 | 缩放级别: ${map.getZoom()}
+            `;
+    currentLatLng = {
+      lat,
+      lng
+    };
+  }
+
+  // 初始化显示
+  updateInfoPanel(initialLat, initialLng);
+
+  // 监听地图点击事件（获取鼠标点击的地理坐标）
+  map.on('click', function(e) {
+    const {
+      lat,
+      lng
+    } = e.latlng;
+    updateInfoPanel(lat, lng);
+    // 可弹出一个临时标记提示，但为了简洁，仅更新面板
+    // 也可添加一个临时浮动提示，此处略
+    L.popup()
+      .setLatLng([lat, lng])
+      .setContent(`坐标: ${lat.toFixed(5)}, ${lng.toFixed(5)}`)
+      .openOn(map);
+  });
+
+  // 监听地图移动结束（拖动或缩放后更新中心点坐标显示）
+  map.on('moveend', function() {
+    const center = map.getCenter();
+    updateInfoPanel(center.lat, center.lng);
+  });
+
+  // 一键复制坐标功能（使用现代 Clipboard API）
+  copyBtn.addEventListener('click', function() {
+    const coordText = `${currentLatLng.lat.toFixed(6)}, ${currentLatLng.lng.toFixed(6)}`;
+    navigator.clipboard.writeText(coordText).then(() => {
+      // 临时改变按钮文字反馈
+      const originalText = copyBtn.innerText;
+      copyBtn.innerText = '✅ 已复制!';
+      setTimeout(() => {
+        copyBtn.innerText = originalText;
+      }, 1500);
+    }).catch(err => {
+      console.error('复制失败: ', err);
+      alert('无法复制坐标，请手动选择');
+    });
+  });
+
+  // 6. 额外处理：如果天地图密钥失效或网络问题，捕获错误的处理（可选）
+  // 监听瓦片加载错误事件（避免控制台大量报错，给出提示）
+  map.on('tileerror', function(error) {
+    console.warn('地图瓦片加载失败，请检查网络或天地图密钥是否有效', error);
+    // 可以在这里给出用户友好提示，但为了简洁，仅控制台输出
+    if (!infoDiv.innerHTML.includes('瓦片加载异常')) {
+      // 不重复显示太多
+    }
+  });
+
+  // 7. 增加一个缩放比例尺控件（可选，方便查看比例）
+  L.control.scale({
+    metric: true,
+    imperial: false
+  }).addTo(map);
+
+  // 小提示：将Leaflet版本和控制台信息输出（便于调试）
+  console.log('Leaflet版本: ' + L.version);
+  console.log('天地图地图初始化完成，当前中心坐标:', initialLat, initialLng);
+</script>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
+/* 自定义控制面板样式 */
+.info-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-size: 14px;
+  pointer-events: none;
+  font-family: monospace;
+  border-left: 4px solid #00aaff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.coord-control {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: white;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+.coord-control:hover {
+  background: #f0f0f0;
+  transform: scale(1.02);
+}
+
+
+
+/* 缩放控件移到右下角 */
+.leaflet-control-zoom {
+  position: absolute !important;
+  bottom: 20px !important;
+  right: 20px !important;
+  top: auto !important;
+  left: auto !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  margin: 0 !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(4px);
+  color: #1f2937 !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  transition: all 0.2s ease !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #006eff !important;
+  color: white !important;
+}
+
+.leaflet-control-zoom-in {
+  border-radius: 8px 8px 0 0 !important;
+}
+
+.leaflet-control-zoom-out {
+  border-radius: 0 0 8px 8px !important;
+}
+
+/* 可选：为图层面板添加简单样式（后续可扩展） */
+.leaflet-control-attribution {
+  font-size: 9px;
+  background: rgba(255, 255, 255, 0.7);
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

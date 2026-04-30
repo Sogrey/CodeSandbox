@@ -1,0 +1,252 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/1 01:40:09
+页面标题: Leaflet加载百度地图
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet加载百度地图</title>
+<meta name="description" content="加载百度地图时，开发者常常遇到坐标系不兼容、瓦片无法显示等问题。" />
+<template>
+<div id="map"></div>
+
+<div class="info-note" id="infoNote">
+  🔄 正在加载百度地图...
+</div>
+</template>
+<script>
+const infoDiv = document.getElementById('infoNote');
+
+try {
+  // 检查必要的库是否加载
+  if (typeof L === 'undefined') {
+    throw new Error('Leaflet 未加载');
+  }
+  if (typeof proj4 === 'undefined') {
+    throw new Error('proj4 未加载');
+  }
+  if (typeof L.Proj === 'undefined') {
+    throw new Error('proj4leaflet 未加载，请检查网络');
+  }
+
+  infoDiv.innerHTML = '⚙️ 正在初始化百度地图投影...';
+
+  // ========== 1. 定义百度地图投影参数 ==========
+  // 百度地图使用的自定义墨卡托投影参数
+  const crsCode = 'BAIDU_MERCATOR';
+
+  // 定义投影参数（百度地图专用）
+  const baiduProjDef = '+proj=merc +a=6378206 +b=6356584.314245179 +lat_ts=0.0 +lon_0=0.0 +x_0=0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs';
+
+  // 注册投影（如果还没有注册）
+  if (!proj4.defs[crsCode]) {
+    proj4.defs(crsCode, baiduProjDef);
+  }
+
+  // 百度地图的分辨率级别（匹配瓦片级别 3-18）
+  const resolutions = [];
+  for (let i = 0; i < 19; i++) {
+    resolutions[i] = Math.pow(2, 18 - i);
+  }
+
+  // 百度地图的边界范围（墨卡托投影的全球范围）
+  const baiduBounds = L.bounds(
+    [-20037508.342789244, -20037508.342789244],
+    [20037508.342789244, 20037508.342789244]
+  );
+
+  // 创建百度地图专用的 CRS
+  const baiduCRS = new L.Proj.CRS(crsCode, baiduProjDef, {
+    resolutions: resolutions,
+    origin: [0, 0],
+    bounds: baiduBounds,
+    transformation: new L.Transformation(1, 0, -1, 0)
+  });
+
+  infoDiv.innerHTML = '🗺️ 正在创建地图实例...';
+
+  // ========== 2. 初始化地图 ==========
+  // 注意：百度地图使用 BD09 坐标系，WGS84 坐标会有偏移
+  // 这里使用百度坐标（经过转换的武汉坐标）
+  const baiduWuhanLat = 30.5322; // 百度坐标系下的纬度
+  const baiduWuhanLng = 114.4089; // 百度坐标系下的经度
+
+  const map = L.map('map', {
+    crs: baiduCRS, // 使用百度投影
+    center: [baiduWuhanLat, baiduWuhanLng],
+    zoom: 12,
+    minZoom: 3,
+    maxZoom: 18,
+    zoomControl: true,
+    attributionControl: false
+  });
+
+  // 可选：添加缩放控件到右下角
+  L.control.zoom({
+    position: 'bottomright'
+  }).addTo(map);
+
+  infoDiv.innerHTML = '🌐 正在加载百度地图瓦片...';
+
+  // ========== 3. 加载百度地图瓦片 ==========
+  // 使用官方百度地图瓦片服务
+  const baiduTileLayer = L.tileLayer(
+    'https://online{s}.map.bdimg.com/onlinelabel/?qt=tile&x={x}&y={y}&z={z}&styles=pl&scaler=1&p=1', {
+      maxZoom: 18,
+      minZoom: 3,
+      subdomains: ['0', '1', '2'],
+      tms: true, // 百度使用TMS规范
+      crossOrigin: true,
+      errorTileUrl: '', // 可选：错误时显示的图片
+      // 重试次数
+      maxNativeZoom: 18,
+      zoomOffset: 0
+    }
+  );
+
+  baiduTileLayer.addTo(map);
+
+  // ========== 4. 添加示例标记 ==========
+  // 添加一个标记点（使用百度坐标）
+  const marker = L.marker([baiduWuhanLat, baiduWuhanLng]).addTo(map);
+  marker.bindPopup(`
+                    <b>📍 武汉·黄鹤楼区域</b><br>
+                    百度坐标: ${baiduWuhanLat}, ${baiduWuhanLng}<br>
+                    <i>坐标系: BD09 (百度专用)</i>
+                `).openPopup();
+
+  // 添加一个圆形标注
+  L.circle([baiduWuhanLat, baiduWuhanLng], {
+    color: '#3388ff',
+    weight: 2,
+    fillColor: '#3388ff',
+    fillOpacity: 0.15,
+    radius: 200
+  }).addTo(map);
+
+  // ========== 5. 事件监听与错误处理 ==========
+  let tileLoadSuccess = false;
+  let tileLoadError = false;
+
+  // 监听瓦片加载成功
+  baiduTileLayer.on('load', function() {
+    if (!tileLoadSuccess) {
+      tileLoadSuccess = true;
+      infoDiv.className = 'info-note success-note';
+      infoDiv.innerHTML = '✅ 百度地图加载成功！ | 使用百度坐标系';
+      console.log('百度地图瓦片加载成功');
+
+      // 3秒后恢复样式
+      setTimeout(() => {
+        if (!tileLoadError) {
+          infoDiv.className = 'info-note';
+          infoDiv.innerHTML = '🗺️ 百度地图 (Leaflet适配) | 武汉区域';
+        }
+      }, 3000);
+    }
+  });
+
+  // 监听瓦片加载错误
+  map.on('tileerror', function(error) {
+    if (!tileLoadError) {
+      tileLoadError = true;
+      console.error('百度地图瓦片加载错误:', error);
+      infoDiv.className = 'info-note error-note';
+      infoDiv.innerHTML = '⚠️ 瓦片加载失败，请检查网络连接';
+    }
+  });
+
+  // 地图加载成功后的日志
+  map.on('moveend', function() {
+    const center = map.getCenter();
+    console.log(`地图当前位置: 纬度=${center.lat.toFixed(4)}, 经度=${center.lng.toFixed(4)}`);
+  });
+
+  // 添加比例尺控件
+  L.control.scale({
+    metric: true,
+    imperial: false,
+    position: 'bottomleft'
+  }).addTo(map);
+
+  console.log('百度地图初始化成功！');
+
+  // 将 map 对象挂载到 window 方便调试
+  window.baiduMap = map;
+
+} catch (error) {
+  console.error('地图加载失败:', error);
+  infoDiv.className = 'info-note error-note';
+  infoDiv.innerHTML = `❌ 地图加载失败: ${error.message}`;
+
+  // 提供更详细的错误信息
+  if (error.message.includes('CRS')) {
+    infoDiv.innerHTML += '<br>📌 提示: proj4leaflet 插件可能加载失败，请检查网络';
+  }
+}
+</script>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
+.info-note {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: monospace;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+  z-index: 1000;
+}
+
+.error-note {
+  background: rgba(220, 53, 69, 0.9);
+}
+
+.success-note {
+  background: rgba(40, 167, 69, 0.9);
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+https://cdn.jsdelivr.net/npm/proj4@2.9.0/dist/proj4.js
+https://cdn.jsdelivr.net/npm/proj4leaflet@1.0.2/src/proj4leaflet.js
+</js-links>
+</settings>

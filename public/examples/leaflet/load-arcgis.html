@@ -1,0 +1,277 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/1 01:59:04
+页面标题: Leaflet加载ArcGIS瓦片地图
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet加载ArcGIS瓦片地图</title>
+<meta name="description" content="本例核心功能是加载ArcGIS的全球街道地图并显示指定位置。
+ArcGIS作为全球领先的地理信息系统平台，提供了高质量的在线瓦片服务。" />
+<template>
+<div id="map"></div>
+
+<div class="info-panel" id="infoPanel">
+  🔄 正在加载地图...
+</div>
+<button class="coord-btn" id="copyBtn">📋 复制坐标</button>
+</template>
+<script>
+ const infoPanel = document.getElementById('infoPanel');
+ const copyBtn = document.getElementById('copyBtn');
+
+ // 坐标变量
+ let currentLat = 30.5217;
+ let currentLng = 114.3948;
+ let currentZoom = 13;
+ let map = null;
+
+ // 更新信息面板的函数
+ function updateInfoPanel(lat, lng, zoom) {
+   if (!infoPanel) return;
+   infoPanel.innerHTML = `
+                        📍 当前位置: ${typeof lat === 'number' ? lat.toFixed(6) : lat} , ${typeof lng === 'number' ? lng.toFixed(6) : lng}<br>
+                        🔍 缩放级别: ${zoom}<br>
+                        🗺️ ArcGIS 全球街道地图
+                    `;
+   currentLat = lat;
+   currentLng = lng;
+   currentZoom = zoom;
+ }
+
+ try {
+   // 初始化地图
+   map = L.map('map', {
+     crs: L.CRS.EPSG3857,
+     center: [30.5217, 114.3948],
+     zoom: 13,
+     minZoom: 2,
+     maxZoom: 18,
+     zoomControl: false,
+     attributionControl: false
+   });
+
+   // 添加缩放控件到右下角
+   L.control.zoom({
+     position: 'bottomright'
+   }).addTo(map);
+
+   // 加载ArcGIS瓦片图层
+   const arcgisLayer = L.tileLayer(
+     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}.png', {
+       maxZoom: 18,
+       minZoom: 1,
+       attribution: '&copy; <a href="https://www.esri.com/" target="_blank">Esri</a> | 街道地图'
+     }
+   ).addTo(map);
+
+   // 添加标记点
+   const marker = L.marker([30.5217, 114.3948]).addTo(map);
+   marker.bindPopup('<b>📍 武汉·示例位置</b><br>经纬度: 30.5217, 114.3948');
+
+   // 添加圆形
+   L.circle([30.5217, 114.3948], {
+     color: '#3388ff',
+     weight: 2,
+     fillColor: '#3388ff',
+     fillOpacity: 0.1,
+     radius: 500
+   }).addTo(map);
+
+   // 添加比例尺
+   L.control.scale({
+     metric: true,
+     imperial: false,
+     position: 'bottomleft'
+   }).addTo(map);
+
+   // 监听地图移动事件
+   map.on('moveend', function() {
+     if (!map) return;
+     const center = map.getCenter();
+     const zoom = map.getZoom();
+     if (center && typeof center.lat === 'number') {
+       updateInfoPanel(center.lat, center.lng, zoom);
+     }
+   });
+
+   // 监听地图点击事件
+   map.on('click', function(e) {
+     if (!e || !e.latlng) return;
+     const {
+       lat,
+       lng
+     } = e.latlng;
+     const zoom = map.getZoom();
+     updateInfoPanel(lat, lng, zoom);
+
+     // 弹出临时提示
+     const tempPopup = L.popup()
+       .setLatLng([lat, lng])
+       .setContent(`📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`)
+       .openOn(map);
+
+     // 3秒后关闭临时弹窗
+     setTimeout(() => {
+       if (tempPopup && map) {
+         map.closePopup(tempPopup);
+       }
+     }, 2000);
+   });
+
+   // 监听瓦片加载成功
+   arcgisLayer.on('load', function() {
+     console.log('ArcGIS地图加载成功');
+     if (infoPanel) {
+       updateInfoPanel(30.5217, 114.3948, 13);
+       setTimeout(() => {
+         if (infoPanel.classList.contains('error-panel')) {
+           infoPanel.classList.remove('error-panel');
+         }
+       }, 1000);
+     }
+   });
+
+   // 监听瓦片加载错误
+   arcgisLayer.on('tileerror', function(error) {
+     console.warn('ArcGIS瓦片加载失败:', error);
+     if (infoPanel) {
+       infoPanel.innerHTML = '⚠️ 瓦片加载异常，请检查网络连接<br>📍 当前位置: ' + currentLat.toFixed(6) + ' , ' + currentLng.toFixed(6);
+       infoPanel.classList.add('error-panel');
+     }
+   });
+
+   // 复制坐标功能
+   if (copyBtn) {
+     copyBtn.addEventListener('click', function() {
+       const coordText = currentLat.toFixed(6) + ', ' + currentLng.toFixed(6);
+       if (navigator.clipboard && navigator.clipboard.writeText) {
+         navigator.clipboard.writeText(coordText).then(function() {
+           const originalText = copyBtn.innerText;
+           copyBtn.innerText = '✅ 已复制!';
+           setTimeout(function() {
+             copyBtn.innerText = originalText;
+           }, 1500);
+         }).catch(function(err) {
+           console.error('复制失败:', err);
+           alert('复制失败: ' + coordText);
+         });
+       } else {
+         // 降级方案
+         alert('坐标: ' + coordText);
+       }
+     });
+   }
+
+   // 初始化显示
+   updateInfoPanel(30.5217, 114.3948, 13);
+   console.log('ArcGIS地图初始化完成');
+
+ } catch (error) {
+   console.error('地图初始化错误:', error);
+   if (infoPanel) {
+     infoPanel.innerHTML = '❌ 地图加载失败: ' + (error.message || '未知错误');
+     infoPanel.classList.add('error-panel');
+   }
+ }
+</script>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
+.info-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: monospace;
+  border-left: 3px solid #00aaff;
+  pointer-events: none;
+  transition: all 0.3s ease;
+}
+
+.coord-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
+}
+
+.coord-btn:hover {
+  background: #0066cc;
+  color: white;
+  transform: scale(1.02);
+}
+
+.error-panel {
+  border-left-color: #ff4444;
+  background: rgba(0, 0, 0, 0.9);
+}
+
+@media (max-width: 600px) {
+  .info-panel {
+    font-size: 10px;
+    padding: 5px 10px;
+    bottom: 12px;
+    left: 12px;
+  }
+
+  .coord-btn {
+    padding: 4px 10px;
+    font-size: 10px;
+    bottom: 12px;
+    right: 12px;
+  }
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

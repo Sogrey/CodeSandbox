@@ -1,6 +1,6 @@
 <!--
 CodeSandbox 分享文件
-生成时间: 2026/5/2 01:03:09
+生成时间: 2026/5/2 01:19:17
 页面标题: Leaflet加载GPX轨迹数据
 原始页面链接: https://sogrey.top/CodeSandbox/
 -->
@@ -32,22 +32,19 @@ CodeSandbox 分享文件
  }).addTo(map);
  map.zoomControl.setPosition('bottomright');
 
- // ========== 2. 配置GPX文件地址 ==========
+ // ========== 2. 加载 GPX 轨迹 ==========
  const infoDiv = document.getElementById('infoPanel');
+ // 直接使用您指定的地址
  const gpxUrl = '../../../CodeSandbox/datas/demo.gpx';
 
  infoDiv.innerHTML = `⏳ 正在加载GPX轨迹...<br>📁 ${gpxUrl}`;
 
- // ========== 3. 加载GPX轨迹 ==========
  const gpxLayer = new L.GPX(gpxUrl, {
-   async: true, // 异步加载
-   // 轨迹线样式（醒目红色）
+   async: true,
    polyline_options: {
-     color: '#ff3366', // 亮红色
-     weight: 4, // 线宽4px
-     opacity: 0.9, // 不透明度
-     lineCap: 'round', // 圆头端点
-     lineJoin: 'round' // 圆角连接
+     color: '#ff3366',
+     weight: 4,
+     opacity: 0.9
    },
    // 标记点样式（起点、终点）
    marker_options: {
@@ -61,39 +58,33 @@ CodeSandbox 分享文件
    }
  });
 
- // ========== 4. 事件处理 ==========
- // 轨迹加载成功
  gpxLayer.on('loaded', function(e) {
-   // 自动缩放至轨迹范围
-   const bounds = e.target.getBounds();
-   if (bounds.isValid()) {
-     map.fitBounds(bounds, {
-       padding: [30, 30]
-     });
-   }
-   // 获取轨迹长度
-   const length = e.target.getLength();
+   const gpx = e.target;
+   map.fitBounds(gpx.getBounds());
+
+   const name = gpx.get_name();
+   const distance = (gpx.get_distance() / 1000).toFixed(2);
+   const startTime = gpx.get_start_time();
+   const movingTime = gpx.get_duration_string(gpx.get_moving_time());
+   const avgSpeed = (gpx.get_moving_speed() * 3.6).toFixed(1);
+
    infoDiv.innerHTML = `
                     ✅ GPX 轨迹加载成功！<br>
-                    📊 长度: ${length ? (length / 1000).toFixed(2) : '?'} km<br>
-                    🖱️ 已自动定位轨迹范围
+                    📊 名称: ${name}<br>
+                    📏 距离: ${distance} km<br>
+                    ⏱️ 移动时间: ${movingTime}<br>
+                    🏃 平均速度: ${avgSpeed} km/h<br>
+                    📅 开始时间: ${startTime ? startTime.toLocaleString() : '未知'}<br>
+                    🖱️ 已自动定位至轨迹范围
                 `;
-   infoDiv.classList.add('success-panel');
-   console.log('GPX 加载完成');
+   console.log('GPX 加载完成', gpx);
  });
 
- // 轨迹加载失败
  gpxLayer.on('error', function(e) {
    console.error('GPX 加载失败:', e);
-   infoDiv.innerHTML = `
-                    ❌ GPX 加载失败: ${e.message || '网络或文件错误'}<br>
-                    📌 地址: ${gpxUrl}<br>
-                    💡 可能原因: 跨域限制或文件不存在
-                `;
-   infoDiv.classList.add('error-panel');
+   infoDiv.innerHTML = `❌ GPX 加载失败<br>📁 ${gpxUrl}<br>💡 该地址可能不可访问，请检查网络或更换地址`;
  });
 
- // 添加至地图
  gpxLayer.addTo(map);
 </script>
 <style>

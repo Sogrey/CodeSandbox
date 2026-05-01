@@ -1,0 +1,234 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/1 23:21:02
+页面标题: Leaflet 加载 WMS 服务
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 加载 WMS 服务</title>
+<meta name="description" content="在WebGIS开发中，WMS（Web Map Service）作为OGC（开放地理空间联盟）的核心标准，被广泛应用于地理空间数据的共享和可视化。" />
+<template>
+<div id="map"></div>
+
+<div class="info-panel" id="infoPanel">
+  🔄 正在加载地图和WMS图层...
+</div>
+<div class="wms-note" id="wmsNote">
+  🗺️ WMS图层: topp:states (美国各州边界)
+</div>
+</template>
+<script type="module">
+// ========== 1. 初始化地图（高德底图，稳定免密钥） ==========
+  // 地图视野设定为美国大陆区域，便于查看 WMS 图层内容
+  const map = L.map('map').setView([39.8283, -98.5795], 4);
+
+  // 高德矢量底图（避免天地图418问题）
+  L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+    subdomains: ['1', '2', '3', '4'],
+    attribution: '&copy; 高德地图'
+  }).addTo(map);
+
+  // 比例尺控件
+  L.control.scale({
+    metric: true,
+    imperial: false,
+    position: 'bottomleft'
+  }).addTo(map);
+  map.zoomControl.setPosition('bottomright');
+
+  // 可选：限定地图最大边界（避免拖拽到空白区域）
+  map.setMaxBounds(L.latLngBounds(L.latLng(-60, -140), L.latLng(60, -30)));
+
+  // ========== 2. 添加 WMS 图层 ==========
+  const infoDiv = document.getElementById('infoPanel');
+
+  // WMS 服务地址（使用文章中稳定的 GeoServer 示例）
+  const wmsUrl = 'http://demo.boundlessgeo.com/geoserver/wms';
+
+  // 创建 WMS 图层
+  const wmsLayer = L.tileLayer.wms(wmsUrl, {
+    // 图层名称（重要：指定需要显示的图层）
+    layers: 'topp:states',
+    // 是否透明（便于叠加底图）
+    transparent: true,
+    // 图片格式
+    format: 'image/png',
+    // 是否使用大写参数（某些 WMS 服务需要）
+    uppercase: false,
+    // 版本号
+    version: '1.1.1',
+    // 服务 attribution（可选）
+    attribution: '&copy; <a href="https://boundlessgeo.com/">Boundless</a> 演示数据'
+  }).addTo(map);
+
+  // WMS 图层加载成功（瓦片开始加载）
+  wmsLayer.on('load', function() {
+    infoDiv.innerHTML = `
+                    ✅ WMS 图层加载成功！<br>
+                    📡 服务: GeoServer 演示服务<br>
+                    🗺️ 图层: topp:states (美国各州边界)<br>
+                    🖱️ 可拖拽/缩放地图查看详细数据
+                `;
+    infoDiv.classList.add('success-panel');
+    console.log('WMS 图层加载完成');
+  });
+
+  // 瓦片加载错误处理（网络或服务问题）
+  wmsLayer.on('tileerror', function(e) {
+    console.warn('WMS 瓦片加载失败:', e);
+    infoDiv.innerHTML = `
+                    ⚠️ WMS 瓦片加载异常<br>
+                    服务地址: ${wmsUrl}<br>
+                    图层: topp:states<br>
+                    请检查网络或服务可用性
+                `;
+    infoDiv.style.borderLeftColor = '#ffaa44';
+  });
+
+  // ========== 3. 可选：添加图层控制（方便开关WMS图层） ==========
+  // 在右上角添加一个简单的图层控制按钮
+  const layerControl = L.Control.extend({
+    options: {
+      position: 'topright'
+    },
+    onAdd: function(map) {
+      const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+      container.style.backgroundColor = 'white';
+      container.style.padding = '5px 10px';
+      container.style.borderRadius = '4px';
+      container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.2)';
+      container.style.cursor = 'pointer';
+      container.style.fontSize = '12px';
+      container.style.fontWeight = 'bold';
+      container.innerHTML = '🗺️ 切换WMS图层';
+
+      let wmsVisible = true;
+      container.onclick = function() {
+        if (wmsVisible) {
+          map.removeLayer(wmsLayer);
+          container.innerHTML = '📍 显示WMS图层';
+          container.style.backgroundColor = '#ffaa00';
+        } else {
+          map.addLayer(wmsLayer);
+          container.innerHTML = '🗺️ 切换WMS图层';
+          container.style.backgroundColor = 'white';
+        }
+        wmsVisible = !wmsVisible;
+      };
+      return container;
+    }
+  });
+  map.addControl(new layerControl());
+
+  // 底图瓦片错误处理（高德底图）
+  map.on('tileerror', function(e) {
+    console.warn('高德底图瓦片加载异常:', e);
+    if (infoDiv && !infoDiv.innerHTML.includes('底图异常')) {
+      const originalHtml = infoDiv.innerHTML;
+      infoDiv.innerHTML = `⚠️ 底图瓦片加载异常，但WMS图层仍可显示<br>${originalHtml}`;
+      infoDiv.style.borderLeftColor = '#ffaa44';
+    }
+  });
+
+  console.log('地图初始化完成，WMS 服务地址:', wmsUrl);
+</script>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
+
+
+
+/* 信息面板 */
+.info-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+  border-left: 3px solid #00aaff;
+  pointer-events: none;
+  line-height: 1.5;
+  max-width: 350px;
+}
+
+.success-panel {
+  border-left-color: #00aa66;
+}
+
+/* 缩放控件样式 */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  margin: 16px !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.95) !important;
+  transition: all 0.2s;
+  font-weight: bold !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #0066cc !important;
+  color: white !important;
+}
+
+/* 可选：WMS 图层面板说明 */
+.wms-note {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  color: #ffaa00;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: monospace;
+  pointer-events: none;
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

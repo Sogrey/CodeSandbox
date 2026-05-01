@@ -1,0 +1,155 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/2 00:54:46
+页面标题: Leaflet 加载 WFS 服务
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 加载 WFS 服务</title>
+<meta name="description" content="在WebGIS开发中，WFS（Web Feature Service）作为OGC（开放地理空间联盟）的核心标准之一，与WMS和WMTS不同，它返回的是矢量数据本身而非图片，使得客户端可以对地理要素进行查询、编辑和分析。" />
+<template>
+<div id="map"></div>
+
+<div class="status" id="status">🔄 正在加载 WFS 图层...</div>
+</template>
+<script type="module">
+ // ========== 1. 初始化地图（高德底图） ==========
+ const map = L.map('map', {
+   crs: L.CRS.EPSG3857,
+   center: [-42.0, 146.0], // 塔斯马尼亚岛中心
+   zoom: 7,
+   minZoom: 1,
+   maxZoom: 17
+ });
+
+ // 高德矢量底图（稳定免密钥）
+ L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+   subdomains: ['1', '2', '3', '4'],
+   attribution: '&copy; 高德地图'
+ }).addTo(map);
+
+ // 比例尺控件
+ L.control.scale({
+   metric: true,
+   imperial: false,
+   position: 'bottomleft'
+ }).addTo(map);
+ map.zoomControl.setPosition('bottomright');
+
+ // ========== 2. 加载 WFS 图层（使用文章中的服务地址） ==========
+ const statusDiv = document.getElementById('status');
+
+ // 配置参数（完全参考文章示例）
+ const wfsLayer = new L.WFS({
+   url: 'https://geoserver.ics.perm.ru/geoserver/wfs', // 文章中的服务地址
+   typeNS: 'topp',
+   typeName: 'tasmania_state_boundaries',
+   geometryField: 'the_geom',
+   crs: L.CRS.EPSG4326, // 关键：坐标系必须正确
+   version: '1.1.0', // 关键：WFS版本
+   proxy: null,
+   style: {
+     color: '#3388ff',
+     weight: 3,
+     fillColor: '#3388ff',
+     fillOpacity: 0.2
+   }
+ }).addTo(map);
+
+ // 加载成功
+ wfsLayer.on('load', function() {
+   const layerCount = Object.keys(wfsLayer._layers).length;
+   statusDiv.innerHTML = `✅ WFS 图层加载成功！<br>📊 要素数量: ${layerCount}<br>📍 塔斯马尼亚州边界`;
+   statusDiv.classList.add('status-success');
+   console.log('WFS 加载成功，要素数量:', layerCount);
+ });
+
+ // 加载失败
+ wfsLayer.on('error', function(e) {
+   console.error('WFS 加载失败:', e);
+   statusDiv.innerHTML = `❌ WFS 加载失败<br>📡 服务: geoserver.ics.perm.ru<br>💡 请检查网络或服务可用性`;
+   statusDiv.classList.add('status-error');
+ });
+
+ // 点击要素显示属性
+ wfsLayer.on('click', function(e) {
+   const layer = e.layer;
+   if (layer.feature && layer.feature.properties) {
+     const props = layer.feature.properties;
+     let content = '<div style="min-width:150px;"><strong>📋 属性信息</strong><br>';
+     for (let key in props) {
+       if (props[key]) {
+         content += `<b>${key}:</b> ${props[key]}<br>`;
+       }
+     }
+     content += '</div>';
+     layer.bindPopup(content).openPopup();
+   }
+ });
+
+ console.log('地图初始化完成，WFS 服务地址:', 'https://geoserver.ics.perm.ru/geoserver/wfs');
+</script>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
+/* 简洁状态提示 */
+.status {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  color: #00ffcc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+  pointer-events: none;
+}
+
+.status-error {
+  color: #ff8888;
+}
+
+.status-success {
+  color: #88ff88;
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+https://unpkg.com/leaflet-wfst@2.0.1-beta.27/dist/leaflet-wfst.min.js
+</js-links>
+</settings>

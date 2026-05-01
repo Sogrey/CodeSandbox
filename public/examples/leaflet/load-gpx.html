@@ -1,0 +1,180 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/2 01:03:09
+页面标题: Leaflet加载GPX轨迹数据
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet加载GPX轨迹数据</title>
+<meta name="description" content="在户外运动、车辆监控、路径规划等WebGIS场景中，GPX（GPS Exchange Format）作为标准的GPS数据交换格式被广泛使用。" />
+<template>
+<div id="map"></div>
+
+<div class="info-panel" id="infoPanel">🔄 正在加载GPX轨迹数据...</div>
+</template>
+<script type="module">
+ // ========== 1. 初始化地图 ==========
+ const map = L.map('map').setView([42.45, -71.11], 13);
+
+ // 使用 OpenStreetMap 底图
+ L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+   maxZoom: 19,
+   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+ }).addTo(map);
+
+ L.control.scale({
+   metric: true,
+   imperial: false,
+   position: 'bottomleft'
+ }).addTo(map);
+ map.zoomControl.setPosition('bottomright');
+
+ // ========== 2. 配置GPX文件地址 ==========
+ const infoDiv = document.getElementById('infoPanel');
+ const gpxUrl = '../CodeSandbox/data/demo.gpx';
+
+ infoDiv.innerHTML = `⏳ 正在加载GPX轨迹...<br>📁 ${gpxUrl}`;
+
+ // ========== 3. 加载GPX轨迹 ==========
+ const gpxLayer = new L.GPX(gpxUrl, {
+   async: true, // 异步加载
+   // 轨迹线样式（醒目红色）
+   polyline_options: {
+     color: '#ff3366', // 亮红色
+     weight: 4, // 线宽4px
+     opacity: 0.9, // 不透明度
+     lineCap: 'round', // 圆头端点
+     lineJoin: 'round' // 圆角连接
+   },
+   // 标记点样式（起点、终点）
+   marker_options: {
+     startIconUrl: 'https://cdn.jsdelivr.net/npm/leaflet-gpx@1.4.0/pin-icon-start.png',
+     endIconUrl: 'https://cdn.jsdelivr.net/npm/leaflet-gpx@1.4.0/pin-icon-end.png',
+     shadowUrl: 'https://cdn.jsdelivr.net/npm/leaflet-gpx@1.4.0/pin-shadow.png'
+   },
+   waypoint: true, // 显示途经点
+   gpx_options: {
+     parseElements: ['track', 'route', 'waypoint']
+   }
+ });
+
+ // ========== 4. 事件处理 ==========
+ // 轨迹加载成功
+ gpxLayer.on('loaded', function(e) {
+   // 自动缩放至轨迹范围
+   const bounds = e.target.getBounds();
+   if (bounds.isValid()) {
+     map.fitBounds(bounds, {
+       padding: [30, 30]
+     });
+   }
+   // 获取轨迹长度
+   const length = e.target.getLength();
+   infoDiv.innerHTML = `
+                    ✅ GPX 轨迹加载成功！<br>
+                    📊 长度: ${length ? (length / 1000).toFixed(2) : '?'} km<br>
+                    🖱️ 已自动定位轨迹范围
+                `;
+   infoDiv.classList.add('success-panel');
+   console.log('GPX 加载完成');
+ });
+
+ // 轨迹加载失败
+ gpxLayer.on('error', function(e) {
+   console.error('GPX 加载失败:', e);
+   infoDiv.innerHTML = `
+                    ❌ GPX 加载失败: ${e.message || '网络或文件错误'}<br>
+                    📌 地址: ${gpxUrl}<br>
+                    💡 可能原因: 跨域限制或文件不存在
+                `;
+   infoDiv.classList.add('error-panel');
+ });
+
+ // 添加至地图
+ gpxLayer.addTo(map);
+</script>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
+/* 信息面板 */
+.info-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: monospace;
+  border-left: 3px solid #ff6600;
+  pointer-events: none;
+  line-height: 1.5;
+  max-width: 350px;
+}
+
+.success-panel {
+  border-left-color: #00aa66;
+}
+
+.error-panel {
+  border-left-color: #ff4444;
+}
+
+/* 缩放控件样式 */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  margin: 16px !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.95) !important;
+  transition: all 0.2s;
+  font-weight: bold !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #0066cc !important;
+  color: white !important;
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+https://cdn.jsdelivr.net/npm/leaflet-gpx@1.4.0/gpx.min.js
+</js-links>
+</settings>

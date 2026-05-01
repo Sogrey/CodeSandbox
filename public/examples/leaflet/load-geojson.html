@@ -1,0 +1,266 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/1 21:47:54
+页面标题: Leaflet加载GeoJSON数据
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet加载GeoJSON数据</title>
+<meta name="description" content="在WebGIS开发中，GeoJSON作为一种轻量级的地理数据交换格式，广泛应用于矢量数据的存储和展示。" />
+<template>
+<div id="map"></div>
+
+<div class="info-panel" id="infoPanel">
+  🔄 正在加载地图和GeoJSON数据...
+</div>
+</template>
+<script>
+ // ========== 1. 初始化地图（天地图底图 + 注记） ==========
+ // 地图中心：武汉区域（与您文章示例区域相近，便于看到绘制的图形）
+ const centerLat = 30.5217;
+ const centerLng = 114.3948;
+ const initZoom = 4;
+
+ const map = L.map('map', {
+   crs: L.CRS.EPSG3857,
+   center: [centerLat, centerLng],
+   zoom: initZoom,
+   minZoom: 3,
+   maxZoom: 18,
+   zoomControl: true,
+   attributionControl: false
+ });
+
+ // 将缩放控件移动到右下角（可选）
+ map.zoomControl.setPosition('bottomright');
+
+ // 天地图矢量底图（使用HTTPS和多子域名，提高稳定性）
+ // 注意：tk为示例密钥，建议替换为您自己的天地图密钥
+ const TIAN_DI_TU_TOKEN = '55b4d4eaef95384c946e9bd1b99c5610';
+ const vecLayer = L.tileLayer(
+   `https://t{s}.tianditu.gov.cn/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${TIAN_DI_TU_TOKEN}`, {
+     subdomains: ['0', '1', '2', '3', '4'],
+     noWrap: true,
+     attribution: '&copy; 天地图'
+   }
+ ).addTo(map);
+
+ // 天地图注记层
+ const cvaLayer = L.tileLayer(
+   `https://t{s}.tianditu.gov.cn/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=${TIAN_DI_TU_TOKEN}`, {
+     subdomains: ['0', '1', '2', '3', '4'],
+     noWrap: true,
+     attribution: '&copy; 天地图注记'
+   }
+ ).addTo(map);
+
+ // 可选：添加比例尺
+ L.control.scale({
+   metric: true,
+   imperial: false,
+   position: 'bottomleft'
+ }).addTo(map);
+
+ // ========== 2. 定义 GeoJSON 样式与交互 ==========
+ // 根据 feature 属性动态设置样式（示例）
+ function getStyle(feature) {
+   // 您可以根据实际数据中的属性字段来定制样式
+   // 例如：假设数据中有 'color' 或 'type' 字段
+   const properties = feature.properties || {};
+   // 默认样式：蓝色半透明，边框深蓝
+   let style = {
+     color: '#3388ff',
+     weight: 2,
+     fillColor: '#3388ff',
+     fillOpacity: 0.2
+   };
+
+   // 示例：如果 properties 中有 'level' 字段，可以调整颜色
+   if (properties.level === 1) {
+     style.fillColor = '#ff4444';
+     style.color = '#ff4444';
+   } else if (properties.level === 2) {
+     style.fillColor = '#44aa44';
+     style.color = '#44aa44';
+   }
+
+   // 您也可以根据其他字段，比如 'name', 'area' 等来定制
+   return style;
+ }
+
+ // 鼠标悬浮时显示属性信息（弹窗）
+ function onEachFeature(feature, layer) {
+   if (feature && feature.properties) {
+     // 准备弹窗内容：显示所有属性，格式美观
+     let popupContent = '<table style="min-width:150px;">';
+     for (let key in feature.properties) {
+       if (feature.properties.hasOwnProperty(key)) {
+         popupContent += `<tr><th style="text-align:left;padding-right:10px;">${key}:</th>
+                                            <td>${feature.properties[key]}</td></tr>`;
+       }
+     }
+     popupContent += '</table>';
+     layer.bindPopup(popupContent);
+
+     // 添加鼠标悬浮高亮效果（可选）
+     layer.on('mouseover', function(e) {
+       const layer = e.target;
+       layer.setStyle({
+         weight: 4,
+         fillOpacity: 0.5,
+         color: '#ffaa00'
+       });
+       // 如果不希望悬浮时打开弹窗，可以注释下面这行
+       // layer.openPopup();
+     });
+     layer.on('mouseout', function(e) {
+       const layer = e.target;
+       // 恢复原样式（需要重新获取原始样式）
+       const originalStyle = getStyle(feature);
+       layer.setStyle(originalStyle);
+       // layer.closePopup(); // 可选：移出时关闭弹窗
+     });
+
+     // 点击时也可以打开弹窗（默认绑定点击，但这里为了更好体验保留）
+     layer.on('click', function(e) {
+       layer.openPopup();
+     });
+   }
+ }
+
+ // ========== 3. 加载 GeoJSON 数据 ==========
+ const infoDiv = document.getElementById('infoPanel');
+ let geoJsonLayer = null; // 用于存储图层引用
+
+ // 尝试加载本地 GeoJSON 文件
+ fetch('../../../CodeSandbox/datas/100000_full.json')
+   .then(response => {
+     if (!response.ok) {
+       throw new Error(`HTTP ${response.status}: 文件加载失败，请检查路径是否正确`);
+     }
+     return response.json();
+   })
+   .then(data => {
+     // 加载成功后渲染
+     if (geoJsonLayer) {
+       map.removeLayer(geoJsonLayer);
+     }
+     geoJsonLayer = L.geoJSON(data, {
+       style: getStyle,
+       onEachFeature: onEachFeature,
+       // 如果数据量较大，可以使用 smoothFactor 优化性能
+       smoothFactor: 1.0
+     }).addTo(map);
+
+     // 可选：自动缩放至数据范围
+     const bounds = geoJsonLayer.getBounds();
+     if (bounds.isValid()) {
+       map.fitBounds(bounds, {
+         padding: [20, 20]
+       });
+     }
+
+     infoDiv.innerHTML = `✅ 成功加载 GeoJSON 数据！共 ${geoJsonLayer.getLayers().length} 个要素<br>📁 文件: 100000_full.json`;
+     infoDiv.style.borderLeftColor = '#00aa66';
+     console.log('GeoJSON 加载成功', data);
+   })
+   .catch(error => {
+     console.error('加载 GeoJSON 出错:', error);
+     // 如果加载失败，使用示例数据（与文章类似）来演示，避免页面完全空白
+     infoDiv.innerHTML = `⚠️ 加载本地文件失败: ${error.message}<br>使用内置示例数据演示...`;
+     infoDiv.classList.add('error-panel');
+   });
+
+ // 瓦片加载错误提示（简单处理）
+ map.on('tileerror', function(e) {
+   console.warn('底图瓦片加载失败，请检查网络或天地图密钥', e);
+   if (infoDiv && !infoDiv.innerHTML.includes('瓦片异常')) {
+     const originalHtml = infoDiv.innerHTML;
+     infoDiv.innerHTML = `⚠️ 底图瓦片加载异常，但GeoJSON数据仍可显示。<br>${originalHtml}`;
+     infoDiv.style.borderLeftColor = '#ffaa44';
+   }
+ });
+
+ console.log('地图初始化完成，正在加载GeoJSON...');
+</script>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #f0f2f5;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+
+
+
+
+/* 加载状态面板 */
+.info-panel {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: monospace;
+  border-left: 4px solid #00aaff;
+  pointer-events: none;
+  transition: all 0.3s;
+}
+
+.error-panel {
+  border-left-color: #ff4444;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+/* 缩放控件位置微调 */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  margin: 16px !important;
+}
+
+.leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.95) !important;
+  transition: all 0.2s;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #0066cc !important;
+  color: white !important;
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

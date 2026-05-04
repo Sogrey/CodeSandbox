@@ -1,7 +1,7 @@
 
 <!--
 CodeSandbox 分享文件
-生成时间: 2026/5/4 16:35:06
+生成时间: 2026/5/4 16:48:21
 页面标题: Leaflet 标注示例
 原始页面链接: https://sogrey.top/CodeSandbox/
 -->
@@ -146,7 +146,7 @@ L.tileLayer.amap = function(option) {
   function showCustomMarker() {
     clearMarkers();
     var customIcon = L.icon({
-      iconUrl: './CodeSandbox/assets/images/2026马.png',
+      iconUrl: '../../assets/images/2026马.png',
       iconSize: [60, 60],
       iconAnchor: [30, 30]
     });
@@ -167,7 +167,7 @@ L.tileLayer.amap = function(option) {
       L.popup({ maxWidth: 280 })
         .setLatLng([30.5218, 114.3948])
         .setContent(`<div style="width:268px;font-size:14px;margin-bottom:8px;">🏞️ 自定义Popup内容</div>
-          <img style="width:268px;border-radius:8px;" src="./CodeSandbox/assets/images/2026马.png" />`)
+          <img style="width:268px;border-radius:8px;" src="../../assets/images/2026马.png" />`)
         .openOn(map);
     });
     popupMarker.bindTooltip("👆 点击查看Popup");
@@ -181,13 +181,13 @@ L.tileLayer.amap = function(option) {
     var videoBounds = [[30.5207, 114.3938], [30.5227, 114.3958]];
 
     var playIcon = L.icon({
-      iconUrl: './CodeSandbox/assets/images/play.png',
+      iconUrl: '../../assets/images/play.png',
       iconSize: [60, 60],
       iconAnchor: [30, 30]
     });
 
     var pauseIcon = L.icon({
-      iconUrl: './CodeSandbox/assets/images/pause.png',
+      iconUrl: '../../assets/images/pause.png',
       iconSize: [40, 40],
       iconAnchor: [20, 20]
     });

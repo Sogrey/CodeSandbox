@@ -1,0 +1,346 @@
+
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/4 16:06:52
+页面标题: Leaflet 事件示例
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 事件示例</title>
+<meta name="description" content="Leaflet 地图事件示例，涵盖图层操作事件、地图状态事件、鼠标键盘响应事件、Popup事件，基于高德地图底图。" />
+<template>
+<div id="map"></div>
+
+<div class="control-panel" id="layerPanel">
+  <div class="panel-title">🗺️ 图层切换</div>
+  <button data-layer="vec" class="ctrl-btn active">矢量图</button>
+  <button data-layer="img" class="ctrl-btn">影像图</button>
+  <button data-layer="time" class="ctrl-btn">实时路况</button>
+</div>
+
+<div class="event-log" id="eventLog">
+  <div class="log-title">📋 事件日志</div>
+  <div id="logContent"></div>
+</div>
+
+<div class="info-panel" id="infoPanel">
+  <div>🖱️ <span id="mousePos">点击地图获取坐标</span></div>
+  <div>🔍 缩放级别: <span id="zoomLevel">12</span></div>
+  <div>📍 中心点: <span id="centerPos">30.53, 114.30</span></div>
+  <div>🗂️ 当前图层: <span id="currentLayer">矢量图</span></div>
+  <div>⌨️ 键盘: <span id="keyPress">点击地图后按任意键</span></div>
+</div>
+</template>
+<script>
+L.tileLayer.amap = function(option) {
+    option = option || {};
+    var layer;
+    var subdomains = "1234";
+    switch (option.layer) {
+      case "vec":
+      default:
+        layer = L.tileLayer(
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}", {
+            name: option.name || "矢量图",
+            subdomains: subdomains,
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+          }
+        );
+        break;
+      case "img_d":
+        layer = L.tileLayer(
+          "https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}", {
+            name: option.name || "影像图",
+            subdomains: subdomains,
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+          }
+        );
+        break;
+      case "img_z":
+        layer = L.tileLayer(
+          "https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}", {
+            name: option.name || "影像注记",
+            subdomains: subdomains,
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+          }
+        );
+        break;
+      case "img":
+        layer = L.layerGroup([
+          L.tileLayer.amap({ name: "影像底图", layer: "img_d" }),
+          L.tileLayer.amap({ name: "影像注记", layer: "img_z" })
+        ]);
+        break;
+      case "time":
+        var time = new Date().getTime();
+        layer = L.tileLayer(
+          "https://tm.amap.com/trafficengine/mapabc/traffictile?v=1.0&t=1&x={x}&y={y}&z={z}&t=" + time, {
+            name: option.name || "实时路况",
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+          }
+        );
+        break;
+    }
+    return layer;
+  };
+
+  var vec = L.tileLayer.amap({ layer: "vec", name: "矢量图" });
+  var img = L.tileLayer.amap({ layer: "img", name: "影像图" });
+  var time = L.tileLayer.amap({ layer: "time", name: "实时路况" });
+
+  var baseLayers = {
+    "矢量图": vec,
+    "影像图": img,
+    "实时路况": time
+  };
+
+  var map = L.map("map", {
+    center: [30.53, 114.3],
+    zoom: 12,
+    layers: [vec],
+    zoomControl: false
+  });
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  var logContent = document.getElementById('logContent');
+  var logCount = 0;
+  var maxLogs = 50;
+
+  function addLog(type, message) {
+    logCount++;
+    var time = new Date().toLocaleTimeString();
+    var logEntry = document.createElement('div');
+    logEntry.className = 'log-entry log-' + type.toLowerCase().replace(/\s+/g, '-');
+    logEntry.innerHTML = '<span class="log-time">' + time + '</span><span class="log-type">[' + type + ']</span> ' + message;
+    logContent.insertBefore(logEntry, logContent.firstChild);
+    if (logCount > maxLogs) {
+      logContent.removeChild(logContent.lastChild);
+    }
+  }
+
+  function updateInfo() {
+    document.getElementById('zoomLevel').innerText = map.getZoom();
+    var center = map.getCenter();
+    document.getElementById('centerPos').innerText = center.lat.toFixed(4) + ', ' + center.lng.toFixed(4);
+  }
+
+  map.on('baselayerchange', function(e) {
+    addLog('图层操作', '基图层切换为: ' + e.name);
+    document.getElementById('currentLayer').innerText = e.name;
+  });
+
+  map.on('moveend', function(e) {
+    addLog('地图状态', '地图移动结束');
+    updateInfo();
+  });
+
+  map.on('zoomend', function(e) {
+    addLog('地图状态', '缩放级别改变为: ' + map.getZoom());
+    updateInfo();
+  });
+
+  map.on('movestart', function(e) {
+    addLog('地图状态', '开始移动地图');
+  });
+
+  map.on('zoomstart', function(e) {
+    addLog('地图状态', '开始缩放');
+  });
+
+  map.on('click', function(e) {
+    var coord = e.latlng.lat.toFixed(6) + ', ' + e.latlng.lng.toFixed(6);
+    addLog('鼠标事件', '点击地图: ' + coord);
+    document.getElementById('mousePos').innerText = coord;
+    map.getContainer().focus();
+  });
+
+  map.on('dblclick', function(e) {
+    addLog('鼠标事件', '双击地图');
+  });
+
+  map.on('contextmenu', function(e) {
+    addLog('鼠标事件', '右键点击地图');
+  });
+
+  map.on('mouseover', function(e) {
+    addLog('鼠标事件', '鼠标进入地图');
+  });
+
+  map.on('mouseout', function(e) {
+    addLog('鼠标事件', '鼠标移出地图');
+  });
+
+  map.on('keypress', function(e) {
+    var key = e.originalEvent.key;
+    addLog('键盘事件', '按下键盘: ' + key);
+    document.getElementById('keyPress').innerText = key;
+  });
+
+  map.on('keydown', function(e) {
+    if (e.originalEvent.key === 'ArrowUp') {
+      addLog('键盘事件', '按下 ↑ 方向键');
+    } else if (e.originalEvent.key === 'ArrowDown') {
+      addLog('键盘事件', '按下 ↓ 方向键');
+    } else if (e.originalEvent.key === 'ArrowLeft') {
+      addLog('键盘事件', '按下 ← 方向键');
+    } else if (e.originalEvent.key === 'ArrowRight') {
+      addLog('键盘事件', '按下 → 方向键');
+    }
+  });
+
+  var marker = L.marker([30.53, 114.3]).addTo(map);
+  marker.bindPopup('<b>武汉黄鹤楼</b><br>点击测试Popup事件');
+
+  marker.on('popupopen', function(e) {
+    addLog('Popup事件', '弹窗已打开');
+  });
+
+  marker.on('popupclose', function(e) {
+    addLog('Popup事件', '弹窗已关闭');
+  });
+
+  var circle = L.circle([30.54, 114.32], {
+    color: 'red',
+    fillColor: '#f03',
+    fillOpacity: 0.5,
+    radius: 500
+  }).addTo(map);
+  circle.bindPopup('红色圆形区域');
+
+  circle.on('popupopen', function(e) {
+    addLog('Popup事件', '圆形弹窗已打开');
+  });
+
+  circle.on('popupclose', function(e) {
+    addLog('Popup事件', '圆形弹窗已关闭');
+  });
+
+  map.on('layeradd', function(e) {
+    if (e.layer instanceof L.TileLayer || e.layer instanceof L.LayerGroup) {
+      addLog('图层操作', '添加图层');
+    }
+  });
+
+  map.on('layerremove', function(e) {
+    if (e.layer instanceof L.TileLayer || e.layer instanceof L.LayerGroup) {
+      addLog('图层操作', '移除图层');
+    }
+  });
+
+  var btnMap = {
+    'vec': { layer: vec, name: '矢量图' },
+    'img': { layer: img, name: '影像图' },
+    'time': { layer: time, name: '实时路况' }
+  };
+
+  document.querySelectorAll('.ctrl-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var layerType = this.dataset.layer;
+      if (btnMap[layerType]) {
+        document.querySelectorAll('.ctrl-btn').forEach(function(b) {
+          b.classList.remove('active');
+        });
+        this.classList.add('active');
+        map.removeLayer(vec);
+        map.removeLayer(img);
+        map.removeLayer(time);
+        map.addLayer(btnMap[layerType].layer);
+        document.getElementById('currentLayer').innerText = btnMap[layerType].name;
+        addLog('图层操作', '切换到底图: ' + btnMap[layerType].name);
+      }
+    });
+  });
+
+  updateInfo();
+  addLog('系统', '地图初始化完成');
+</script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+  #map { width: 100%; height: 100%; }
+
+  .control-panel {
+    position: absolute; top: 20px; right: 20px; z-index: 1000;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    padding: 12px 16px; min-width: 140px;
+  }
+  .panel-title { font-size: 13px; font-weight: 600; color: #1e2a3a; margin-bottom: 10px; }
+  .ctrl-btn {
+    display: block; width: 100%; background: rgba(30,35,48,0.08);
+    border: none; padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; color: #1e2a3a; cursor: pointer;
+    margin-bottom: 6px; transition: all 0.2s ease;
+  }
+  .ctrl-btn:last-child { margin-bottom: 0; }
+  .ctrl-btn:hover { background: linear-gradient(135deg,#006eff,#0052cc); color: white; }
+  .ctrl-btn.active { background: linear-gradient(135deg,#006eff,#0052cc); color: white; }
+
+  .event-log {
+    position: absolute; bottom: 40px; right: 20px; z-index: 1000;
+    background: rgba(20,25,35,0.9); backdrop-filter: blur(12px);
+    border-radius: 16px; padding: 12px 16px; width: 320px; max-height: 300px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2); overflow: hidden;
+  }
+  .log-title { font-size: 13px; font-weight: 600; color: #eef4ff; margin-bottom: 10px; }
+  #logContent { max-height: 250px; overflow-y: auto; }
+  .log-entry {
+    font-size: 11px; font-family: 'Consolas', monospace; color: #d1d5db;
+    padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { color: #6b7280; margin-right: 6px; }
+  .log-type { color: #93c5fd; margin-right: 6px; }
+  .log-\u5c40\u52a8 { color: #86efac; }
+  .log-\u5730\u56fe\u72b6\u6001 { color: #fde68a; }
+  .log-\u9f20\u6807\u4e8b\u4ef6 { color: #f9a8d4; }
+  .log-\u952e\u76d8\u4e8b\u4ef6 { color: #c4b5fd; }
+  .log-popup\u4e8b\u4ef6 { color: #fdba74; }
+  .log-\u7cfb\u7edf { color: #67e8f9; }
+
+  .info-panel {
+    position: absolute; bottom: 80px; left: 20px; z-index: 1000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
+    border-radius: 16px; padding: 12px 16px; font-size: 12px;
+    color: #f0f9ff; font-family: 'Consolas', monospace; line-height: 1.6;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .info-panel span { color: #ffd966; font-weight: 600; }
+
+  .leaflet-control-zoom {
+    position: absolute !important; bottom: 20px !important; right: 20px !important;
+    top: auto !important; left: auto !important; border: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important; margin: 0 !important;
+  }
+  .leaflet-control-zoom a {
+    background: rgba(255,255,255,0.95) !important; backdrop-filter: blur(4px);
+    color: #1f2937 !important; width: 36px !important; height: 36px !important;
+    line-height: 36px !important; font-size: 18px !important; font-weight: bold !important;
+  }
+  .leaflet-control-zoom a:hover { background: #006eff !important; color: white !important; }
+  .leaflet-control-attribution {
+    background: rgba(0,0,0,0.6) !important; color: #ccc !important; font-size: 10px !important;
+  }
+
+  @media (max-width: 700px) {
+    .event-log { width: 240px; max-height: 200px; }
+    .info-panel { font-size: 10px; bottom: 70px; }
+  }
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

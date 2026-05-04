@@ -1,0 +1,188 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/4 11:10:00
+页面标题: Leaflet 比例尺
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 比例尺</title>
+<meta name="description" content="Leaflet 比例尺控件示例，Leaflet 内置比例尺控件，支持公制和英制单位。" />
+<template>
+<div id="map"></div>
+
+<div class="control-panel">
+  <div class="panel-title">📏 比例尺设置</div>
+  <div class="unit-toggle">
+    <button id="metricBtn" class="unit-btn active">公制 (m/km)</button>
+    <button id="imperialBtn" class="unit-btn">英制 (ft/mi)</button>
+  </div>
+  <div class="option-item">
+    <label><input type="checkbox" id="showScale" checked> 显示比例尺</label>
+  </div>
+  <div class="option-item">
+    <label><input type="checkbox" id="showMaxWidth" checked> 显示最大宽度</label>
+  </div>
+</div>
+
+<div class="info-panel">
+  <div>📐 当前比例尺信息</div>
+  <div>缩放级别: <span id="zoomLevel">12</span></div>
+  <div>图上1cm = 实际 <span id="scaleRatio">--</span></div>
+</div>
+</template>
+<script>
+  L.tileLayer.amap = function(option) {
+    option = option || {};
+    var layer;
+    var subdomains = "1234";
+    switch (option.layer) {
+      case "vec":
+      default:
+        layer = L.tileLayer(
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}", {
+            name: option.name || "矢量图",
+            subdomains: subdomains,
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+          }
+        );
+        break;
+    }
+    return layer;
+  };
+
+  var vec = L.tileLayer.amap({ layer: "vec", name: "矢量图" });
+
+  var map = L.map("map", {
+    center: [30.53, 114.3],
+    zoom: 12,
+    layers: [vec],
+    zoomControl: false
+  });
+
+  var metricScale = L.control.scale({
+    position: 'bottomleft',
+    metric: true,
+    imperial: false,
+    maxWidth: 200
+  }).addTo(map);
+
+  var imperialScale = L.control.scale({
+    position: 'bottomleft',
+    metric: false,
+    imperial: true,
+    maxWidth: 200
+  });
+
+  imperialScale.remove();
+
+  function updateScaleInfo() {
+    var zoom = map.getZoom();
+    document.getElementById('zoomLevel').innerText = zoom;
+    
+    var metersPerPixel = 156543.03392 * Math.cos(map.getCenter().lat * Math.PI / 180) / Math.pow(2, zoom);
+    var cmPerPixel = metersPerPixel * 100;
+    var scale = Math.round(cmPerPixel * 200 / 100) * 100;
+    document.getElementById('scaleRatio').innerText = (scale / 100) + ' m';
+  }
+
+  map.on('zoomend', updateScaleInfo);
+  map.on('moveend', updateScaleInfo);
+
+  document.getElementById('metricBtn').addEventListener('click', function() {
+    imperialScale.remove();
+    metricScale.addTo(map);
+    document.getElementById('metricBtn').classList.add('active');
+    document.getElementById('imperialBtn').classList.remove('active');
+  });
+
+  document.getElementById('imperialBtn').addEventListener('click', function() {
+    metricScale.remove();
+    imperialScale.addTo(map);
+    document.getElementById('imperialBtn').classList.add('active');
+    document.getElementById('metricBtn').classList.remove('active');
+  });
+
+  document.getElementById('showScale').addEventListener('change', function() {
+    if (this.checked) {
+      if (document.getElementById('metricBtn').classList.contains('active')) {
+        metricScale.addTo(map);
+      } else {
+        imperialScale.addTo(map);
+      }
+    } else {
+      metricScale.remove();
+      imperialScale.remove();
+    }
+  });
+
+  updateScaleInfo();
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+  #map { width: 100%; height: 100%; }
+
+  .control-panel {
+    position: absolute; top: 20px; right: 20px; z-index: 1000;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    padding: 16px; min-width: 180px;
+  }
+  .panel-title { font-size: 14px; font-weight: 600; color: #1e2a3a; margin-bottom: 12px; }
+  
+  .unit-toggle { display: flex; gap: 6px; margin-bottom: 12px; }
+  .unit-btn {
+    flex: 1; background: rgba(30,35,48,0.08); border: none;
+    padding: 8px 12px; border-radius: 8px; font-size: 12px;
+    color: #1e2a3a; cursor: pointer; transition: all 0.2s ease;
+  }
+  .unit-btn:hover { background: rgba(30,35,48,0.15); }
+  .unit-btn.active { background: linear-gradient(135deg,#006eff,#0052cc); color: white; }
+
+  .option-item { margin-bottom: 8px; font-size: 13px; color: #1e2a3a; }
+  .option-item:last-child { margin-bottom: 0; }
+  .option-item input[type="checkbox"] { margin-right: 8px; }
+
+  .info-panel {
+    position: absolute; bottom: 60px; left: 20px; z-index: 1000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
+    border-radius: 12px; padding: 12px 16px; font-size: 12px;
+    color: #f0f9ff; font-family: 'Consolas', monospace;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .info-panel span { color: #ffd966; font-weight: 600; }
+
+  .leaflet-control-scale {
+    background: rgba(255,255,255,0.9) !important;
+    border: 2px solid #1e2a3a !important;
+    border-top: none !important;
+    border-radius: 0 4px 4px 0 !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    font-family: 'Consolas', monospace !important;
+  }
+
+  .leaflet-control-scale-line {
+    border: 1px solid #1e2a3a !important;
+    border-bottom: none !important;
+    border-top: 2px solid #1e2a3a !important;
+  }
+
+  .leaflet-control-attribution {
+    background: rgba(0,0,0,0.6) !important; color: #ccc !important; font-size: 10px !important;
+  }
+</style>
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

@@ -1,0 +1,206 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/4 11:15:00
+页面标题: Leaflet 鹰眼图
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 鹰眼图</title>
+<meta name="description" content="Leaflet 鹰眼图（小地图）示例，使用 Leaflet-MiniMap 插件在角落显示小地图。" />
+<template>
+<div id="map"></div>
+
+<div class="control-panel">
+  <div class="panel-title">🗺️ 鹰眼图设置</div>
+  <div class="option-item">
+    <label><input type="checkbox" id="showMiniMap" checked> 显示鹰眼图</label>
+  </div>
+  <div class="option-item">
+    <label>鹰眼位置:</label>
+    <select id="miniMapPosition" class="position-select">
+      <option value="topright">右上</option>
+      <option value="topleft">左上</option>
+      <option value="bottomright" selected>右下</option>
+      <option value="bottomleft">左下</option>
+    </select>
+  </div>
+  <div class="option-item">
+    <label>叠加图层:</label>
+    <select id="miniMapLayer" class="position-select">
+      <option value="vec">矢量图</option>
+      <option value="img_d">影像图</option>
+      <option value="img">影像+注记</option>
+    </select>
+  </div>
+</div>
+
+<div class="info-panel">
+  <div>🗺️ 鹰眼图显示主地图的 overview</div>
+  <div>当前级别: <span id="zoomLevel">12</span></div>
+</div>
+</template>
+<script>
+  L.tileLayer.amap = function(option) {
+    option = option || {};
+    var layer;
+    var subdomains = "1234";
+    switch (option.layer) {
+      case "vec":
+        layer = L.tileLayer(
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}", {
+            name: option.name || "矢量图",
+            subdomains: subdomains,
+            attribution: ''
+          }
+        );
+        break;
+      case "img_d":
+        layer = L.tileLayer(
+          "https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}", {
+            name: option.name || "影像图",
+            subdomains: subdomains,
+            attribution: ''
+          }
+        );
+        break;
+      case "img":
+        layer = L.layerGroup([
+          L.tileLayer.amap({ name: "影像底图", layer: "img_d" }),
+          L.tileLayer.amap({ name: "影像注记", layer: "img_z" })
+        ]);
+        break;
+      case "img_z":
+        layer = L.tileLayer(
+          "https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}", {
+            name: option.name || "影像注记",
+            subdomains: subdomains,
+            attribution: ''
+          }
+        );
+        break;
+    }
+    return layer;
+  };
+
+  var vec = L.tileLayer.amap({ layer: "vec", name: "矢量图" });
+  var miniMapLayer = L.tileLayer.amap({ layer: "vec", name: "矢量图" });
+
+  var map = L.map("map", {
+    center: [30.53, 114.3],
+    zoom: 12,
+    layers: [vec],
+    zoomControl: false
+  });
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  var miniMap = L.control.minimap(miniMapLayer, {
+    position: 'bottomright',
+    toggleDisplay: true,
+    aimingRectOptions: { color: '#006eff', weight: 2, fillOpacity: 0.1 },
+    shadowRectOptions: { color: '#ff7800', weight: 2, fillOpacity: 0.05 }
+  }).addTo(map);
+
+  document.getElementById('showMiniMap').addEventListener('change', function() {
+    if (this.checked) {
+      miniMap.addTo(map);
+    } else {
+      miniMap.remove();
+    }
+  });
+
+  document.getElementById('miniMapPosition').addEventListener('change', function() {
+    miniMap.remove();
+    miniMap.setPosition(this.value);
+    miniMap.addTo(map);
+  });
+
+  document.getElementById('miniMapLayer').addEventListener('change', function() {
+    var newLayer;
+    switch(this.value) {
+      case 'vec':
+        newLayer = L.tileLayer.amap({ layer: "vec", name: "矢量图" });
+        break;
+      case 'img_d':
+        newLayer = L.tileLayer.amap({ layer: "img_d", name: "影像图" });
+        break;
+      case 'img':
+        newLayer = L.tileLayer.amap({ layer: "img", name: "影像+注记" });
+        break;
+    }
+    miniMap.changeLayer(newLayer);
+  });
+
+  map.on('zoomend', function() {
+    document.getElementById('zoomLevel').innerText = map.getZoom();
+  });
+
+  document.getElementById('zoomLevel').innerText = map.getZoom();
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+  #map { width: 100%; height: 100%; }
+
+  .control-panel {
+    position: absolute; top: 20px; right: 20px; z-index: 1000;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    padding: 16px; min-width: 180px;
+  }
+  .panel-title { font-size: 14px; font-weight: 600; color: #1e2a3a; margin-bottom: 12px; }
+  
+  .option-item { margin-bottom: 10px; font-size: 13px; color: #1e2a3a; }
+  .option-item:last-child { margin-bottom: 0; }
+  .option-item input[type="checkbox"] { margin-right: 8px; }
+  .option-item label { display: block; margin-bottom: 4px; font-weight: 500; }
+
+  .position-select {
+    width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;
+    font-size: 13px; background: white;
+  }
+
+  .info-panel {
+    position: absolute; bottom: 80px; left: 20px; z-index: 1000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
+    border-radius: 12px; padding: 12px 16px; font-size: 12px;
+    color: #f0f9ff; font-family: 'Consolas', monospace;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .info-panel span { color: #ffd966; font-weight: 600; }
+
+  .leaflet-control-minimap {
+    border-radius: 12px !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+    border: 2px solid rgba(255,255,255,0.8) !important;
+  }
+
+  .leaflet-control-zoom {
+    position: absolute !important; bottom: 20px !important; right: 20px !important;
+    top: auto !important; left: auto !important; border: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+  }
+  .leaflet-control-zoom a {
+    background: rgba(255,255,255,0.95) !important; backdrop-filter: blur(4px);
+    color: #1f2937 !important; width: 36px !important; height: 36px !important;
+    line-height: 36px !important; font-size: 18px !important; font-weight: bold !important;
+  }
+  .leaflet-control-zoom a:hover { background: #006eff !important; color: white !important; }
+  .leaflet-control-attribution {
+    background: rgba(0,0,0,0.6) !important; color: #ccc !important; font-size: 10px !important;
+  }
+</style>
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

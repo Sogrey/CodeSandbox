@@ -1,0 +1,269 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/4 11:35:00
+页面标题: Leaflet 网格
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 网格</title>
+<meta name="description" content="Leaflet 网格线示例，使用 L.Graticule 插件在地图上显示经纬度网格线。" />
+<template>
+<div id="map"></div>
+
+<div class="control-panel">
+  <div class="panel-title">🔲 网格设置</div>
+  <div class="option-item">
+    <label><input type="checkbox" id="showGraticule" checked> 显示网格</label>
+  </div>
+  <div class="option-item">
+    <label>网格间距:</label>
+    <select id="graticuleInterval" class="position-select">
+      <option value="1">1° (密集)</option>
+      <option value="5">5°</option>
+      <option value="10" selected>10°</option>
+      <option value="20">20°</option>
+      <option value="30">30°</option>
+    </select>
+  </div>
+  <div class="color-picker">
+    <label>网格颜色:</label>
+    <input type="color" id="graticuleColor" value="#333333">
+  </div>
+  <div class="option-item">
+    <label>网格线宽:</label>
+    <input type="range" id="graticuleWeight" min="0.5" max="3" step="0.5" value="1" class="weight-slider">
+    <span id="weightValue">1</span>px
+  </div>
+</div>
+
+<div class="info-panel">
+  <div>🔲 经纬度网格线</div>
+  <div>赤道: 0° | 本初子午线: 0°</div>
+</div>
+</template>
+<script>
+  L.Graticule = L.GeoJSON.extend({
+    options: {
+      style: {
+        color: '#333',
+        weight: 1
+      },
+      interval: 20
+    },
+    initialize: function(options) {
+      L.Util.setOptions(this, options);
+      this._layers = {};
+      this.addData(this._getGraticule());
+    },
+    _getGraticule: function() {
+      var features = [], interval = this.options.interval;
+      for (var lng = -180; lng <= 180; lng = lng + interval) {
+        features.push(this._getFeature(this._getMeridian(lng), {
+          "name": lng + "°"
+        }));
+      }
+      for (var lat = -90; lat <= 90; lat = lat + interval) {
+        features.push(this._getFeature(this._getParallel(lat), {
+          "name": lat + "°"
+        }));
+      }
+      return { "type": "FeatureCollection", "features": features };
+    },
+    _getMeridian: function(lng) {
+      lng = this._lngFix(lng);
+      var coords = [];
+      for (var lat = -90; lat <= 90; lat++) {
+        coords.push([lng, lat]);
+      }
+      return coords;
+    },
+    _getParallel: function(lat) {
+      var coords = [];
+      for (var lng = -180; lng <= 180; lng++) {
+        coords.push([this._lngFix(lng), lat]);
+      }
+      return coords;
+    },
+    _getFeature: function(coords, prop) {
+      return {
+        "type": "Feature",
+        "geometry": { "type": "LineString", "coordinates": coords },
+        "properties": prop
+      };
+    },
+    _lngFix: function(lng) {
+      if (lng >= 180) return 179.999999;
+      if (lng <= -180) return -179.999999;
+      return lng;
+    }
+  });
+
+  L.graticule = function(options) {
+    return new L.Graticule(options);
+  };
+
+  L.tileLayer.amap = function(option) {
+    option = option || {};
+    var layer;
+    var subdomains = "1234";
+    switch (option.layer) {
+      case "vec":
+      default:
+        layer = L.tileLayer(
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}", {
+            name: option.name || "矢量图",
+            subdomains: subdomains,
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+          }
+        );
+        break;
+    }
+    return layer;
+  };
+
+  var vec = L.tileLayer.amap({ layer: "vec", name: "矢量图" });
+
+  var map = L.map("map", {
+    center: [30, 114],
+    zoom: 4,
+    layers: [vec],
+    zoomControl: false
+  });
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  var graticule = L.graticule({
+    interval: 10,
+    style: {
+      color: '#333',
+      weight: 1,
+      opacity: 0.6,
+      dashArray: '3, 3'
+    }
+  }).addTo(map);
+
+  graticule.bindTooltip(function(latlng) {
+    return L.tooltip({
+      permanent: true,
+      direction: 'center',
+      className: 'graticule-label'
+    }).setContent(latlng.properties.name);
+  }, { layer: graticule });
+
+  document.getElementById('showGraticule').addEventListener('change', function() {
+    if (this.checked) {
+      graticule.addTo(map);
+    } else {
+      graticule.remove();
+    }
+  });
+
+  document.getElementById('graticuleInterval').addEventListener('change', function() {
+    var interval = parseInt(this.value);
+    graticule.remove();
+    graticule = L.graticule({
+      interval: interval,
+      style: {
+        color: document.getElementById('graticuleColor').value,
+        weight: parseFloat(document.getElementById('graticuleWeight').value),
+        opacity: 0.6,
+        dashArray: '3, 3'
+      }
+    }).addTo(map);
+  });
+
+  document.getElementById('graticuleColor').addEventListener('input', function() {
+    graticule.setStyle({
+      color: this.value
+    });
+  });
+
+  document.getElementById('graticuleWeight').addEventListener('input', function() {
+    document.getElementById('weightValue').innerText = this.value;
+    graticule.setStyle({
+      weight: parseFloat(this.value)
+    });
+  });
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+  #map { width: 100%; height: 100%; }
+
+  .control-panel {
+    position: absolute; top: 20px; right: 20px; z-index: 1000;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    padding: 16px; min-width: 180px;
+  }
+  .panel-title { font-size: 14px; font-weight: 600; color: #1e2a3a; margin-bottom: 12px; }
+  
+  .option-item { margin-bottom: 10px; font-size: 13px; color: #1e2a3a; }
+  .option-item:last-child { margin-bottom: 0; }
+  .option-item input[type="checkbox"] { margin-right: 8px; }
+  .option-item label { display: block; margin-bottom: 4px; font-weight: 500; }
+
+  .position-select {
+    width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;
+    font-size: 13px; background: white;
+  }
+
+  .color-picker {
+    margin-bottom: 10px; font-size: 13px; color: #1e2a3a;
+  }
+  .color-picker label { display: block; margin-bottom: 4px; font-weight: 500; }
+  .color-picker input[type="color"] {
+    width: 100%; height: 32px; border: 1px solid #ddd; border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .weight-slider {
+    width: calc(100% - 40px); margin-right: 8px;
+  }
+
+  .info-panel {
+    position: absolute; bottom: 80px; left: 20px; z-index: 1000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
+    border-radius: 12px; padding: 12px 16px; font-size: 12px;
+    color: #f0f9ff; font-family: 'Consolas', monospace;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+
+  .leaflet-control-zoom {
+    position: absolute !important; bottom: 20px !important; right: 20px !important;
+    top: auto !important; left: auto !important; border: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+  }
+  .leaflet-control-zoom a {
+    background: rgba(255,255,255,0.95) !important; backdrop-filter: blur(4px);
+    color: #1f2937 !important; width: 36px !important; height: 36px !important;
+    line-height: 36px !important; font-size: 18px !important; font-weight: bold !important;
+  }
+  .leaflet-control-zoom a:hover { background: #006eff !important; color: white !important; }
+  .leaflet-control-attribution {
+    background: rgba(0,0,0,0.6) !important; color: #ccc !important; font-size: 10px !important;
+  }
+
+  .graticule-label {
+    background: transparent !important;
+    border: transparent !important;
+    box-shadow: none !important;
+    font-size: 10px;
+    color: #666;
+    font-family: 'Consolas', monospace;
+  }
+</style>
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

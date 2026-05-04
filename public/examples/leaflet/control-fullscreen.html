@@ -1,0 +1,167 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/4 11:25:00
+页面标题: Leaflet 全屏
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 全屏</title>
+<meta name="description" content="Leaflet 全屏控件示例，使用 Leaflet.fullscreen 插件实现地图全屏显示。" />
+<template>
+<div id="map"></div>
+
+<div class="control-panel" id="controlPanel">
+  <div class="panel-title">🖥️ 全屏控制</div>
+  <button id="fullscreenBtn" class="ctrl-btn">⛶ 进入全屏</button>
+  <div class="info-text">提示：按 ESC 键退出全屏</div>
+</div>
+
+<div class="info-panel">
+  <div>🖥️ 全屏模式示例</div>
+  <div>状态: <span id="fullscreenStatus">普通模式</span></div>
+</div>
+</template>
+<script>
+  L.tileLayer.amap = function(option) {
+    option = option || {};
+    var layer;
+    var subdomains = "1234";
+    switch (option.layer) {
+      case "vec":
+      default:
+        layer = L.tileLayer(
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}", {
+            name: option.name || "矢量图",
+            subdomains: subdomains,
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+          }
+        );
+        break;
+    }
+    return layer;
+  };
+
+  var vec = L.tileLayer.amap({ layer: "vec", name: "矢量图" });
+
+  var map = L.map("map", {
+    center: [30.53, 114.3],
+    zoom: 12,
+    layers: [vec],
+    zoomControl: false,
+    fullscreenControl: true
+  });
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  L.control.fullscreen({
+    position: 'topright',
+    title: '进入全屏',
+    titleCancel: '退出全屏',
+    forceSeparate: true,
+    pseudoFullscreen: false
+  }).addTo(map);
+
+  var isFullscreen = false;
+
+  map.on('enterFullscreen', function() {
+    isFullscreen = true;
+    document.getElementById('fullscreenStatus').innerText = '全屏模式';
+    document.getElementById('fullscreenBtn').innerText = '⛶ 退出全屏';
+    document.getElementById('controlPanel').style.display = 'none';
+  });
+
+  map.on('exitFullscreen', function() {
+    isFullscreen = false;
+    document.getElementById('fullscreenStatus').innerText = '普通模式';
+    document.getElementById('fullscreenBtn').innerText = '⛶ 进入全屏';
+    document.getElementById('controlPanel').style.display = 'block';
+  });
+
+  document.getElementById('fullscreenBtn').addEventListener('click', function() {
+    if (isFullscreen) {
+      map.getFullscreenControl()._exitFullscreen();
+    } else {
+      map.getFullscreenControl()._enterFullscreen();
+    }
+  });
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+  #map { width: 100%; height: 100%; }
+
+  .control-panel {
+    position: absolute; top: 20px; right: 20px; z-index: 1000;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    padding: 16px; min-width: 160px;
+  }
+  .panel-title { font-size: 14px; font-weight: 600; color: #1e2a3a; margin-bottom: 12px; }
+  .ctrl-btn {
+    display: block; width: 100%; background: linear-gradient(135deg,#006eff,#0052cc);
+    border: none; padding: 12px 16px; border-radius: 8px;
+    font-size: 14px; font-weight: 500; color: white; cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .ctrl-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .info-text { font-size: 11px; color: #6b7280; margin-top: 8px; text-align: center; }
+
+  .info-panel {
+    position: absolute; bottom: 80px; left: 20px; z-index: 1000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
+    border-radius: 12px; padding: 12px 16px; font-size: 12px;
+    color: #f0f9ff; font-family: 'Consolas', monospace;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .info-panel span { color: #ffd966; font-weight: 600; }
+
+  .leaflet-fullscreen-button {
+    background: rgba(255,255,255,0.95) !important;
+    backdrop-filter: blur(12px) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12) !important;
+    width: 40px !important;
+    height: 40px !important;
+    margin: 8px !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .leaflet-fullscreen-button:hover {
+    background: #006eff !important;
+  }
+
+  .leaflet-fullscreen-button::after {
+    content: '⛶' !important;
+    font-size: 18px !important;
+    line-height: 40px !important;
+  }
+
+  .leaflet-control-zoom {
+    position: absolute !important; bottom: 20px !important; right: 20px !important;
+    top: auto !important; left: auto !important; border: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+  }
+  .leaflet-control-zoom a {
+    background: rgba(255,255,255,0.95) !important; backdrop-filter: blur(4px);
+    color: #1f2937 !important; width: 36px !important; height: 36px !important;
+    line-height: 36px !important; font-size: 18px !important; font-weight: bold !important;
+  }
+  .leaflet-control-zoom a:hover { background: #006eff !important; color: white !important; }
+  .leaflet-control-attribution {
+    background: rgba(0,0,0,0.6) !important; color: #ccc !important; font-size: 10px !important;
+  }
+</style>
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

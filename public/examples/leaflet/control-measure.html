@@ -1,0 +1,249 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/4 11:30:00
+页面标题: Leaflet 测量
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 测量</title>
+<meta name="description" content="Leaflet 测量控件示例，使用 leaflet-measure 插件测量距离和面积。" />
+<template>
+<div id="map"></div>
+
+<div class="control-panel" id="controlPanel">
+  <div class="panel-title">📏 测量工具</div>
+  <button id="startMeasure" class="ctrl-btn">🎯 开始测量</button>
+  <button id="cancelMeasure" class="ctrl-btn" style="display:none;">❌ 取消测量</button>
+  <div class="measurement-result" id="measurementResult" style="display:none;">
+    <div>📐 测量结果:</div>
+    <div id="lengthResult">长度: <span>--</span></div>
+    <div id="areaResult">面积: <span>--</span></div>
+  </div>
+</div>
+
+<div class="info-panel">
+  <div>📏 距离和面积测量工具</div>
+  <div>提示: 点击地图添加测量点</div>
+</div>
+</template>
+<script>
+  L.tileLayer.amap = function(option) {
+    option = option || {};
+    var layer;
+    var subdomains = "1234";
+    switch (option.layer) {
+      case "vec":
+      default:
+        layer = L.tileLayer(
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}", {
+            name: option.name || "矢量图",
+            subdomains: subdomains,
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+          }
+        );
+        break;
+    }
+    return layer;
+  };
+
+  var vec = L.tileLayer.amap({ layer: "vec", name: "矢量图" });
+
+  var map = L.map("map", {
+    center: [30.53, 114.3],
+    zoom: 13,
+    layers: [vec],
+    zoomControl: false
+  });
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  L.Control.Measure = L.Control.extend({
+    options: {
+      position: 'topright'
+    },
+    _isMeasuring: false,
+    _points: [],
+    _polyline: null,
+    _polygon: null,
+    _markers: [],
+
+    onAdd: function(map) {
+      var container = L.DomUtil.create('div', 'leaflet-measure-control');
+      container.style.cssText = 'display:none;background:rgba(255,255,255,0.95);backdrop-filter:blur(12px);border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,0.12);padding:12px;min-width:180px;';
+      return container;
+    },
+
+    startMeasuring: function() {
+      this._isMeasuring = true;
+      this._points = [];
+      map.getContainer().style.cursor = 'crosshair';
+      this._bindEvents();
+    },
+
+    stopMeasuring: function() {
+      this._isMeasuring = false;
+      map.getContainer().style.cursor = '';
+      this._unbindEvents();
+      this._clearLayers();
+    },
+
+    _bindEvents: function() {
+      this._clickHandler = this._onMapClick.bind(this);
+      map.on('click', this._clickHandler);
+    },
+
+    _unbindEvents: function() {
+      map.off('click', this._clickHandler);
+    },
+
+    _onMapClick: function(e) {
+      this._points.push(e.latlng);
+      this._updateLayers();
+      this._updateResults();
+    },
+
+    _updateLayers: function() {
+      this._clearLayers();
+      
+      if (this._points.length > 0) {
+        var marker = L.circleMarker(this._points[this._points.length - 1], {
+          radius: 6,
+          color: '#006eff',
+          fillColor: '#006eff',
+          fillOpacity: 1
+        }).addTo(map);
+        this._markers.push(marker);
+
+        if (this._points.length > 1) {
+          this._polyline = L.polyline(this._points, {
+            color: '#006eff',
+            weight: 3,
+            dashArray: '5, 10'
+          }).addTo(map);
+
+          if (this._points.length > 2) {
+            this._polygon = L.polygon(this._points, {
+              color: '#ff7800',
+              fillColor: '#ff7800',
+              fillOpacity: 0.2
+            }).addTo(map);
+          }
+        }
+      }
+    },
+
+    _clearLayers: function() {
+      if (this._polyline) { map.removeLayer(this._polyline); this._polyline = null; }
+      if (this._polygon) { map.removeLayer(this._polygon); this._polygon = null; }
+      this._markers.forEach(function(m) { map.removeLayer(m); });
+      this._markers = [];
+    },
+
+    _updateResults: function() {
+      var length = 0;
+      var area = 0;
+
+      if (this._points.length > 1) {
+        for (var i = 1; i < this._points.length; i++) {
+          length += this._points[i].distanceTo(this._points[i-1]);
+        }
+      }
+
+      if (this._points.length > 2) {
+        area = L.GeometryUtil.geodesicArea(this._points);
+      }
+
+      document.getElementById('lengthResult').innerHTML = '长度: <span>' + (length > 1000 ? (length/1000).toFixed(2) + ' km' : length.toFixed(2) + ' m') + '</span>';
+      document.getElementById('areaResult').innerHTML = '面积: <span>' + (area > 1000000 ? (area/1000000).toFixed(2) + ' km²' : area.toFixed(2) + ' m²') + '</span>';
+    }
+  });
+
+  L.control.measure = function(options) {
+    return new L.Control.Measure(options);
+  };
+
+  var measureControl = L.control.measure({ position: 'topright' }).addTo(map);
+
+  document.getElementById('startMeasure').addEventListener('click', function() {
+    measureControl.startMeasuring();
+    document.getElementById('startMeasure').style.display = 'none';
+    document.getElementById('cancelMeasure').style.display = 'block';
+    document.getElementById('measurementResult').style.display = 'block';
+  });
+
+  document.getElementById('cancelMeasure').addEventListener('click', function() {
+    measureControl.stopMeasuring();
+    document.getElementById('startMeasure').style.display = 'block';
+    document.getElementById('cancelMeasure').style.display = 'none';
+    document.getElementById('measurementResult').style.display = 'none';
+    document.getElementById('lengthResult').innerHTML = '长度: <span>--</span>';
+    document.getElementById('areaResult').innerHTML = '面积: <span>--</span>';
+  });
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+  #map { width: 100%; height: 100%; }
+
+  .control-panel {
+    position: absolute; top: 20px; right: 20px; z-index: 1000;
+    background: rgba(255,255,255,0.95); backdrop-filter: blur(12px);
+    border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    padding: 16px; min-width: 180px;
+  }
+  .panel-title { font-size: 14px; font-weight: 600; color: #1e2a3a; margin-bottom: 12px; }
+  .ctrl-btn {
+    display: block; width: 100%; background: rgba(30,35,48,0.08);
+    border: none; padding: 10px 16px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; color: #1e2a3a; cursor: pointer;
+    margin-bottom: 8px; transition: all 0.2s ease;
+  }
+  .ctrl-btn:last-of-type { margin-bottom: 0; }
+  .ctrl-btn:hover { background: linear-gradient(135deg,#006eff,#0052cc); color: white; }
+  .ctrl-btn[style*="display: none"] { display: block !important; }
+
+  .measurement-result {
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    font-size: 12px; color: #1e2a3a;
+  }
+  .measurement-result div { margin-bottom: 4px; }
+  .measurement-result span { color: #006eff; font-weight: 600; }
+
+  .info-panel {
+    position: absolute; bottom: 80px; left: 20px; z-index: 1000;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
+    border-radius: 12px; padding: 12px 16px; font-size: 12px;
+    color: #f0f9ff; font-family: 'Consolas', monospace;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  }
+
+  .leaflet-control-zoom {
+    position: absolute !important; bottom: 20px !important; right: 20px !important;
+    top: auto !important; left: auto !important; border: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+  }
+  .leaflet-control-zoom a {
+    background: rgba(255,255,255,0.95) !important; backdrop-filter: blur(4px);
+    color: #1f2937 !important; width: 36px !important; height: 36px !important;
+    line-height: 36px !important; font-size: 18px !important; font-weight: bold !important;
+  }
+  .leaflet-control-zoom a:hover { background: #006eff !important; color: white !important; }
+  .leaflet-control-attribution {
+    background: rgba(0,0,0,0.6) !important; color: #ccc !important; font-size: 10px !important;
+  }
+</style>
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

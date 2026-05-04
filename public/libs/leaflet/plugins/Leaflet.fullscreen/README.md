@@ -129,7 +129,7 @@ fullscreenControl.on('fullscreenchange', function() {
 | `position` | string | 'topleft' | 控件位置 |
 | `titleEnter` | string | 'Enter Fullscreen' | 进入全屏时的提示文本 |
 | `titleExit` | string | 'Exit Fullscreen' | 退出全屏时的提示文本 |
-| `showUI` | boolean | true | 是否显示 UI |
+| `showUI` | boolean | false | 是否显示 UI |
 
 ## 完整示例
 

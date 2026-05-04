@@ -16,7 +16,7 @@
             titleEnter: 'Enter Fullscreen',
             titleExit: 'Exit Fullscreen',
             forceSeparate: false,
-            showUI: true
+            showUI: false
         },
 
         initialize: function(options) {

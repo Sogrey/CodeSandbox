@@ -1,12 +1,9 @@
 (function (factory) {
     if (typeof define === 'function' && define.amd) {
-        // AMD
         define(['leaflet'], factory);
     } else if (typeof module !== 'undefined') {
-        // Node/CommonJS
         module.exports = factory(require('leaflet'));
     } else {
-        // Browser globals
         if (typeof window.L === 'undefined') {
             throw new Error('Leaflet must be loaded first');
         }
@@ -16,20 +13,34 @@
     L.Control.Fullscreen = L.Control.extend({
         options: {
             position: 'topleft',
-            title: {
-                'false': 'View Fullscreen',
-                'true': 'Exit Fullscreen'
-            }
+            titleEnter: 'Enter Fullscreen',
+            titleExit: 'Exit Fullscreen',
+            forceSeparate: false,
+            showUI: true
         },
 
-        onAdd: function (map) {
+        initialize: function(options) {
+            L.Util.setOptions(this, options);
+            L.Control.prototype.initialize.call(this, options);
+            this._eventHandlers = {};
+            this._isFullscreen = false;
+        },
+
+        onAdd: function(map) {
+            this._map = map;
+            this._map._fullscreenControl = this;
+
+            if (!this.options.showUI) {
+                this._container = L.DomUtil.create('div');
+                return this._container;
+            }
+
             var container = L.DomUtil.create('div', 'leaflet-control-fullscreen leaflet-bar leaflet-control');
 
             this.link = L.DomUtil.create('a', 'leaflet-control-fullscreen-button leaflet-bar-part', container);
             this.link.href = '#';
+            this.link.title = this.options.titleEnter;
 
-            this._map = map;
-            this._map.on('fullscreenchange', this._toggleTitle, this);
             this._toggleTitle();
 
             L.DomEvent.on(this.link, 'click', this._click, this);
@@ -40,90 +51,111 @@
         _click: function (e) {
             L.DomEvent.stopPropagation(e);
             L.DomEvent.preventDefault(e);
-            this._map.toggleFullscreen(this.options);
+            this._map.toggleFullscreen();
         },
 
         _toggleTitle: function() {
-            this.link.title = this.options.title[this._map.isFullscreen()];
+            if (this.link) {
+                this.link.title = this._isFullscreen ? this.options.titleExit : this.options.titleEnter;
+            }
+        },
+
+        isFullscreen: function() {
+            return this._isFullscreen;
+        },
+
+        on: function(type, fn, context) {
+            if (!this._eventHandlers[type]) {
+                this._eventHandlers[type] = [];
+            }
+            this._eventHandlers[type].push({ fn: fn, context: context || this });
+            return this;
+        },
+
+        off: function(type, fn) {
+            if (type === undefined) {
+                this._eventHandlers = {};
+            } else if (fn === undefined) {
+                this._eventHandlers[type] = [];
+            } else {
+                var handlers = this._eventHandlers[type];
+                if (handlers) {
+                    for (var i = 0; i < handlers.length; i++) {
+                    if (handlers[i].fn === fn) {
+                        handlers.splice(i, 1);
+                        i--;
+                    }
+                    }
+                }
+            }
+            return this;
+        },
+
+        fire: function(type, data) {
+            var handlers = this._eventHandlers[type];
+            if (handlers) {
+                for (var i = 0; i < handlers.length; i++) {
+                    handlers[i].fn.call(handlers[i].context, data || {});
+                }
+            }
+            return this;
         }
     });
 
     L.Map.include({
         isFullscreen: function () {
-            return this._isFullscreen || false;
-        },
-
-        toggleFullscreen: function (options) {
-            var container = this.getContainer();
-            if (this.isFullscreen()) {
-                if (options && options.pseudoFullscreen) {
-                    this._disablePseudoFullscreen(container);
-                } else if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.mozCancelFullScreen) {
-                    document.mozCancelFullScreen();
-                } else if (document.webkitCancelFullScreen) {
-                    document.webkitCancelFullScreen();
-                } else if (document.msExitFullscreen) {
-                    document.msExitFullscreen();
-                } else {
-                    this._disablePseudoFullscreen(container);
-                }
-            } else {
-                if (options && options.pseudoFullscreen) {
-                    this._enablePseudoFullscreen(container);
-                } else if (container.requestFullscreen) {
-                    container.requestFullscreen();
-                } else if (container.mozRequestFullScreen) {
-                    container.mozRequestFullScreen();
-                } else if (container.webkitRequestFullscreen) {
-                    container.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
-                } else if (container.msRequestFullscreen) {
-                    container.msRequestFullscreen();
-                } else {
-                    this._enablePseudoFullscreen(container);
-                }
-            }
-
-        },
-
-        _enablePseudoFullscreen: function (container) {
-            L.DomUtil.addClass(container, 'leaflet-pseudo-fullscreen');
-            this._setFullscreen(true);
-            this.fire('fullscreenchange');
-        },
-
-        _disablePseudoFullscreen: function (container) {
-            L.DomUtil.removeClass(container, 'leaflet-pseudo-fullscreen');
-            this._setFullscreen(false);
-            this.fire('fullscreenchange');
-        },
-
-        _setFullscreen: function(fullscreen) {
-            this._isFullscreen = fullscreen;
-            var container = this.getContainer();
-            if (fullscreen) {
-                L.DomUtil.addClass(container, 'leaflet-fullscreen-on');
-            } else {
-                L.DomUtil.removeClass(container, 'leaflet-fullscreen-on');
-            }
-            this.invalidateSize();
-        },
-
-        _onFullscreenChange: function (e) {
-            var fullscreenElement =
-                document.fullscreenElement ||
+            var fullscreenElement = document.fullscreenElement ||
                 document.mozFullScreenElement ||
                 document.webkitFullscreenElement ||
                 document.msFullscreenElement;
+            return !!fullscreenElement;
+        },
 
-            if (fullscreenElement === this.getContainer() && !this._isFullscreen) {
-                this._setFullscreen(true);
-                this.fire('fullscreenchange');
-            } else if (fullscreenElement !== this.getContainer() && this._isFullscreen) {
-                this._setFullscreen(false);
-                this.fire('fullscreenchange');
+        toggleFullscreen: function () {
+            if (this.isFullscreen()) {
+                this.exitFullscreen();
+            } else {
+                this.enterFullscreen();
             }
+        },
+
+        enterFullscreen: function() {
+            var elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        },
+
+        exitFullscreen: function() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitCancelFullScreen) {
+                document.webkitCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        },
+
+        _onFullscreenChange: function () {
+            var fullscreenElement = document.fullscreenElement ||
+                document.mozFullScreenElement ||
+                document.webkitFullscreenElement ||
+                document.msFullscreenElement;
+            this._isFullscreen = !!fullscreenElement;
+            if (this._fullscreenControl) {
+                this._fullscreenControl._isFullscreen = this._isFullscreen;
+                this._fullscreenControl._toggleTitle();
+                this._fullscreenControl.fire('fullscreenchange');
+            }
+            this.fire('fullscreenchange');
         }
     });
 
@@ -138,7 +170,6 @@
         }
 
         var fullscreenchange;
-
         if ('onfullscreenchange' in document) {
             fullscreenchange = 'fullscreenchange';
         } else if ('onmozfullscreenchange' in document) {
@@ -150,14 +181,9 @@
         }
 
         if (fullscreenchange) {
-            var onFullscreenChange = L.bind(this._onFullscreenChange, this);
-
+            var that = this;
             this.whenReady(function () {
-                L.DomEvent.on(document, fullscreenchange, onFullscreenChange);
-            });
-
-            this.on('unload', function () {
-                L.DomEvent.off(document, fullscreenchange, onFullscreenChange);
+                L.DomEvent.on(document, fullscreenchange, that._onFullscreenChange, that);
             });
         }
     });

@@ -1,12 +1,14 @@
 /**
  * Leaflet Measure Control Plugin
  * 用于在 Leaflet 地图上进行距离和面积测量
+ * 支持可选UI和无UI模式
  */
 L.Measure = L.Control.extend({
     options: {
         position: 'topright',
         mode: 'distance',
-        unit: 'metric',
+        showUI: false,
+        unit: 'm',
         styles: {
             strokeColor: '#006eff',
             strokeWeight: 3,
@@ -17,31 +19,109 @@ L.Measure = L.Control.extend({
             previewStrokeWeight: 2,
             areaPreviewStrokeColor: '#ff7800'
         },
-        textStyles: {
+        language: {
             distanceLabel: '📏 距离',
             areaLabel: '⬡ 面积',
             startBtn: '🎯 开始测量',
             endBtn: '✔ 结束测量',
             cancelBtn: '✖ 取消测量',
-            clearBtn: '🗑️ 清除'
+            clearBtn: '🗑️ 清除',
+            panelTitle: '📏 测量工具',
+            noHistory: '暂无测量记录',
+            modeDistance: '📍 距离',
+            modeArea: '⬡ 面积',
+            infoDefault: '📏 距离和面积测量工具',
+            infoDistance: '📏 距离测量 - 点击添加点',
+            infoArea: '⬡ 面积测量 - 点击添加点'
         }
     },
 
-    initialize: function(options) {
-        L.Control.prototype.initialize.call(this, options);
+    initialize: function(mode, options) {
+        if (typeof mode === 'object') {
+            options = mode;
+            mode = 'distance';
+        }
+        var finalOptions = options || {};
+        finalOptions.mode = mode || 'distance';
+
+        L.Control.prototype.initialize.call(this, finalOptions);
+
+        // 添加 L.Evented 的功能
+        if (!this._eventHandlers) {
+            this._eventHandlers = {};
+        }
+
         this._isMeasuring = false;
         this._points = [];
         this._tempLayers = [];
         this._measureHistory = [];
         this._clickTimeout = null;
         this._lastClickLatLng = null;
+        this._lastMouseLatLng = null;
+        this._resultLabelOnMap = null;
+        this._currentResultLabel = null; // 当前正在测量的临时 label
         this._map = null;
+        this._container = null;
+        this._modeDistanceBtn = null;
+        this._modeAreaBtn = null;
+        this._toggleBtn = null;
+        this._cancelBtn = null;
+        this._clearBtn = null;
+        this._resultDiv = null;
+        this._resultLabel = null;
+        this._resultValue = null;
+        this._historyDiv = null;
+        this._infoDiv = null;
+    },
+
+    // 添加 L.Evented 的方法
+    on: function(type, fn, context) {
+        if (!this._eventHandlers[type]) {
+            this._eventHandlers[type] = [];
+        }
+        this._eventHandlers[type].push({ fn: fn, context: context || this });
+        return this;
+    },
+
+    off: function(type, fn) {
+        if (type === undefined) {
+            this._eventHandlers = {};
+        } else if (fn === undefined) {
+            this._eventHandlers[type] = [];
+        } else {
+            var handlers = this._eventHandlers[type];
+            if (handlers) {
+                for (var i = 0; i < handlers.length; i++) {
+                    if (handlers[i].fn === fn) {
+                        handlers.splice(i, 1);
+                        i--;
+                    }
+                }
+            }
+        }
+        return this;
+    },
+
+    fire: function(type, data) {
+        var handlers = this._eventHandlers[type];
+        if (handlers) {
+            for (var i = 0; i < handlers.length; i++) {
+                handlers[i].fn.call(handlers[i].context, data || {});
+            }
+        }
+        return this;
     },
 
     onAdd: function(map) {
         this._map = map;
-        this._container = L.DomUtil.create('div', 'leaflet-measure-control');
 
+        if (!this.options.showUI) {
+            this._container = L.DomUtil.create('div', 'leaflet-measure-control');
+            this._container.style.display = 'none';
+            return this._container;
+        }
+
+        this._container = L.DomUtil.create('div', 'leaflet-measure-control');
         this._createControlPanel();
 
         L.DomEvent.disableClickPropagation(this._container);
@@ -54,46 +134,50 @@ L.Measure = L.Control.extend({
     },
 
     _createControlPanel: function() {
-        var options = this.options;
-        var textStyles = options.textStyles;
+        var lang = this.options.language;
 
         var panelTitle = L.DomUtil.create('div', 'measure-panel-title', this._container);
-        panelTitle.innerHTML = '📏 测量工具';
+        panelTitle.innerHTML = lang.panelTitle;
 
         var modeSwitch = L.DomUtil.create('div', 'measure-mode-switch', this._container);
         this._modeDistanceBtn = L.DomUtil.create('button', 'measure-mode-btn', modeSwitch);
-        this._modeDistanceBtn.innerHTML = '📍 距离';
-        this._modeDistanceBtn.classList.add('active');
+        this._modeDistanceBtn.innerHTML = lang.modeDistance;
+        if (this.options.mode === 'distance') {
+            this._modeDistanceBtn.classList.add('active');
+        }
 
         this._modeAreaBtn = L.DomUtil.create('button', 'measure-mode-btn', modeSwitch);
-        this._modeAreaBtn.innerHTML = '⬡ 面积';
+        this._modeAreaBtn.innerHTML = lang.modeArea;
+        if (this.options.mode === 'area') {
+            this._modeAreaBtn.classList.add('active');
+        }
 
         this._toggleBtn = L.DomUtil.create('button', 'measure-ctrl-btn', this._container);
-        this._toggleBtn.innerHTML = textStyles.startBtn;
+        this._toggleBtn.innerHTML = lang.startBtn;
 
         this._cancelBtn = L.DomUtil.create('button', 'measure-ctrl-btn', this._container);
-        this._cancelBtn.innerHTML = textStyles.cancelBtn;
+        this._cancelBtn.innerHTML = lang.cancelBtn;
         this._cancelBtn.style.display = 'none';
 
         this._clearBtn = L.DomUtil.create('button', 'measure-ctrl-btn', this._container);
-        this._clearBtn.innerHTML = textStyles.clearBtn;
+        this._clearBtn.innerHTML = lang.clearBtn;
         this._clearBtn.style.display = 'none';
 
         this._resultDiv = L.DomUtil.create('div', 'measure-result', this._container);
         this._resultDiv.style.display = 'none';
 
         this._resultLabel = L.DomUtil.create('div', '', this._resultDiv);
-        this._resultLabel.innerHTML = '📏 距离:';
+        this._resultLabel.innerHTML = this.options.mode === 'distance' ? lang.distanceLabel + ':' : lang.areaLabel + ':';
 
         this._resultValue = L.DomUtil.create('div', '', this._resultDiv);
         this._resultValue.innerHTML = '<span>--</span>';
 
         this._historyDiv = L.DomUtil.create('div', 'measure-history', this._container);
-        this._historyDiv.innerHTML = '<div class="measure-no-history">暂无测量记录</div>';
+        this._historyDiv.innerHTML = '<div class="measure-no-history">' + lang.noHistory + '</div>';
 
         this._infoDiv = L.DomUtil.create('div', 'leaflet-measure-info');
-        this._infoText = L.DomUtil.create('div', '', this._infoDiv);
-        this._infoText.innerHTML = '📏 距离和面积测量工具';
+        var infoText = L.DomUtil.create('div', '', this._infoDiv);
+        infoText.innerHTML = lang.infoDefault;
 
         this._bindEvents();
     },
@@ -101,46 +185,58 @@ L.Measure = L.Control.extend({
     _bindEvents: function() {
         var self = this;
 
-        L.DomEvent.on(this._modeDistanceBtn, 'click', function() {
-            self.setMode('distance');
-        });
+        if (this._modeDistanceBtn) {
+            L.DomEvent.on(this._modeDistanceBtn, 'click', function() {
+                self.setMode('distance');
+            });
+        }
 
-        L.DomEvent.on(this._modeAreaBtn, 'click', function() {
-            self.setMode('area');
-        });
+        if (this._modeAreaBtn) {
+            L.DomEvent.on(this._modeAreaBtn, 'click', function() {
+                self.setMode('area');
+            });
+        }
 
-        L.DomEvent.on(this._toggleBtn, 'click', function() {
-            if (self._isMeasuring) {
-                self.finishMeasuring(false, null);
-            } else {
-                self.startMeasuring();
-            }
-        });
+        if (this._toggleBtn) {
+            L.DomEvent.on(this._toggleBtn, 'click', function() {
+                if (self._isMeasuring) {
+                    self.finishMeasuring(false, null);
+                } else {
+                    self.startMeasuring();
+                }
+            });
+        }
 
-        L.DomEvent.on(this._cancelBtn, 'click', function() {
-            self.cancelMeasuring();
-        });
+        if (this._cancelBtn) {
+            L.DomEvent.on(this._cancelBtn, 'click', function() {
+                self.cancelMeasuring();
+            });
+        }
 
-        L.DomEvent.on(this._clearBtn, 'click', function() {
-            self.clearAllResults();
-        });
+        if (this._clearBtn) {
+            L.DomEvent.on(this._clearBtn, 'click', function() {
+                self.clearAllResults();
+            });
+        }
     },
 
     setMode: function(mode) {
         if (this._isMeasuring) return;
-
         this.options.mode = mode;
-        if (mode === 'distance') {
-            this._modeDistanceBtn.classList.add('active');
-            this._modeAreaBtn.classList.remove('active');
-            this._resultLabel.innerHTML = '📏 距离:';
-            this._infoText.innerHTML = '📏 距离测量模式';
-        } else {
-            this._modeAreaBtn.classList.add('active');
-            this._modeDistanceBtn.classList.remove('active');
-            this._resultLabel.innerHTML = '⬡ 面积:';
-            this._infoText.innerHTML = '⬡ 面积测量模式';
+        if (this._modeDistanceBtn && this._modeAreaBtn) {
+            if (mode === 'distance') {
+                this._modeDistanceBtn.classList.add('active');
+                this._modeAreaBtn.classList.remove('active');
+            } else {
+                this._modeAreaBtn.classList.add('active');
+                this._modeDistanceBtn.classList.remove('active');
+            }
         }
+        this.fire('measure:modeChange', { mode: mode });
+    },
+
+    getMode: function() {
+        return this.options.mode;
     },
 
     startMeasuring: function() {
@@ -154,19 +250,30 @@ L.Measure = L.Control.extend({
         this._map.on('dblclick', this._onDoubleClick, this);
         this._map.doubleClickZoom.disable();
 
-        this._toggleBtn.innerHTML = this.options.textStyles.endBtn;
-        this._cancelBtn.style.display = 'block';
-        this._resultDiv.style.display = 'block';
-        this._resultValue.innerHTML = '<span>--</span>';
-
-        if (this._map.hasLayer(this._infoDiv)) {
-            this._map.removeLayer(this._infoDiv);
+        if (this._toggleBtn) {
+            this._toggleBtn.innerHTML = this.options.language.endBtn;
         }
-        this._infoDiv.addTo(this._map);
+        if (this._cancelBtn) {
+            this._cancelBtn.style.display = 'block';
+        }
+        if (this._resultDiv) {
+            this._resultDiv.style.display = 'block';
+        }
+        if (this._resultValue) {
+            this._resultValue.innerHTML = '<span>--</span>';
+        }
+
+        if (this._infoDiv) {
+            if (this._map.hasLayer(this._infoDiv)) {
+                this._map.removeLayer(this._infoDiv);
+            }
+            this._infoDiv.addTo(this._map);
+        }
 
         var mode = this.options.mode;
-        this._resultLabel.innerHTML = mode === 'distance' ? '📏 距离:' : '⬡ 面积:';
-        this._infoText.innerHTML = mode === 'distance' ? '📏 距离测量 - 点击添加点' : '⬡ 面积测量 - 点击添加点';
+        if (this._resultLabel) {
+            this._resultLabel.innerHTML = mode === 'distance' ? this.options.language.distanceLabel + ':' : this.options.language.areaLabel + ':';
+        }
 
         this.fire('measure:start', { mode: mode });
     },
@@ -224,31 +331,59 @@ L.Measure = L.Control.extend({
                 finalGeometries.push(polygon);
             }
 
-            this._measureHistory.push({
-                type: mode,
+            var measurement = {
+                mode: mode,
                 unit: this.options.unit,
                 points: this._points.slice(),
                 geometries: finalGeometries,
                 result: result
-            });
+            };
+
+            this._measureHistory.push(measurement);
 
             this._tempLayers = [];
+            // 测量结束时，确定最终 label 的位置
+            var finalPosition;
+            if (mode === 'distance') {
+                finalPosition = this._points[this._points.length - 1];
+            } else {
+                finalPosition = this._getPolygonCenter(this._points);
+            }
+
+            // 创建最终的 result label 并保存到历史记录中
+            if (finalPosition && this._currentResultLabel) {
+                var finalLabel = L.tooltip({
+                    className: 'leaflet-measure-result-label',
+                    permanent: true,
+                    direction: 'top',
+                    offset: [0, -10]
+                }).setContent(this._formatResult(result)).setLatLng(finalPosition).addTo(this._map);
+                measurement.resultLabel = finalLabel;
+            }
+
+            // 清除当前临时 label
+            this._removeResultLabelOnMap();
             this._points = [];
             this.stopMeasuring();
 
-            this._toggleBtn.innerHTML = this.options.textStyles.startBtn;
-            this._cancelBtn.style.display = 'none';
-            this._clearBtn.style.display = 'block';
+            if (this._toggleBtn) {
+                this._toggleBtn.innerHTML = this.options.language.startBtn;
+            }
+            if (this._cancelBtn) {
+                this._cancelBtn.style.display = 'none';
+            }
+            if (this._clearBtn) {
+                this._clearBtn.style.display = 'block';
+            }
             this._updateHistoryDisplay();
-            this._resultLabel.innerHTML = mode === 'distance' ? '📏 距离:' : '⬡ 面积:';
-            this._resultValue.innerHTML = '<span>' + this._formatResult(result) + '</span>';
+            if (this._resultLabel) {
+                this._resultLabel.innerHTML = mode === 'distance' ? this.options.language.distanceLabel + ':' : this.options.language.areaLabel + ':';
+            }
+            if (this._resultValue) {
+                this._resultValue.innerHTML = '<span>' + this._formatResult(result) + '</span>';
+            }
 
-            this.fire('measure:end', {
-                type: mode,
-                result: result,
-                points: this._points.slice(),
-                geometries: finalGeometries
-            });
+            this.fire('measure:end', measurement);
         } else {
             this.cancelMeasuring();
         }
@@ -263,13 +398,19 @@ L.Measure = L.Control.extend({
         this._map.off('dblclick', this._onDoubleClick, this);
         this._map.doubleClickZoom.enable();
         this._clearTempLayers();
+        this._removeResultLabelOnMap();
         this._tempLayers = [];
         this._points = [];
 
-        this._toggleBtn.innerHTML = this.options.textStyles.startBtn;
-        this._cancelBtn.style.display = 'none';
-        this._resultDiv.style.display = 'none';
-        this._infoText.innerHTML = this.options.mode === 'distance' ? '📏 距离测量模式' : '⬡ 面积测量模式';
+        if (this._toggleBtn) {
+            this._toggleBtn.innerHTML = this.options.language.startBtn;
+        }
+        if (this._cancelBtn) {
+            this._cancelBtn.style.display = 'none';
+        }
+        if (this._resultDiv) {
+            this._resultDiv.style.display = 'none';
+        }
 
         this.fire('measure:cancel');
     },
@@ -282,12 +423,18 @@ L.Measure = L.Control.extend({
                     self._map.removeLayer(layer);
                 }
             });
+            if (measurement.resultLabel && self._map.hasLayer(measurement.resultLabel)) {
+                self._map.removeLayer(measurement.resultLabel);
+            }
         });
         this._measureHistory = [];
         this._updateHistoryDisplay();
-        this._clearBtn.style.display = 'none';
-        this._resultDiv.style.display = 'none';
-        this._infoText.innerHTML = this.options.mode === 'distance' ? '📏 距离和面积测量工具' : '⬡ 面积测量模式';
+        if (this._clearBtn) {
+            this._clearBtn.style.display = 'none';
+        }
+        if (this._resultDiv) {
+            this._resultDiv.style.display = 'none';
+        }
 
         this.fire('measure:clear');
     },
@@ -300,7 +447,7 @@ L.Measure = L.Control.extend({
         if (this._isMeasuring) {
             this.cancelMeasuring();
         }
-        if (this._map && this._map.hasLayer(this._infoDiv)) {
+        if (this._map && this._infoDiv && this._map.hasLayer(this._infoDiv)) {
             this._map.removeLayer(this._infoDiv);
         }
     },
@@ -312,16 +459,17 @@ L.Measure = L.Control.extend({
 
     _addPoint: function(latLng) {
         this._points.push(latLng);
-        var styles = this.options.styles;
-        var marker = L.circleMarker(latLng, {
-            radius: styles.pointRadius,
-            color: styles.strokeColor,
-            fillColor: styles.strokeColor,
-            fillOpacity: 1
-        }).addTo(this._map);
-        this._tempLayers.push(marker);
-        this._updateTempLayers();
         this._updatePreviewResults();
+
+        // 立即更新动态线，使用最后记录的鼠标位置或当前点击位置
+        var updatePosition = this._lastMouseLatLng || latLng;
+        this._updateDynamicLines(updatePosition);
+
+        this.fire('measure:pointAdded', {
+            latlng: latLng,
+            points: this._points.slice(),
+            pointCount: this._points.length
+        });
     },
 
     _onMapClick: function(e) {
@@ -353,7 +501,12 @@ L.Measure = L.Control.extend({
     },
 
     _onMouseMove: function(e) {
-        if (this._points.length > 0) {
+        this._lastMouseLatLng = e.latlng;
+        this._updateDynamicLines(e.latlng);
+    },
+
+    _updateDynamicLines: function(latlng) {
+        if (this._points.length > 0 && latlng) {
             var lastPoint = this._points[this._points.length - 1];
             var styles = this.options.styles;
             this._clearTempLayers();
@@ -368,7 +521,7 @@ L.Measure = L.Control.extend({
                 this._tempLayers.push(marker);
             }
 
-            var previewLine = L.polyline([lastPoint, e.latlng], {
+            var previewLine = L.polyline([lastPoint, latlng], {
                 color: styles.previewStrokeColor,
                 weight: styles.previewStrokeWeight,
                 dashArray: '5, 5',
@@ -376,7 +529,7 @@ L.Measure = L.Control.extend({
             }).addTo(this._map);
             this._tempLayers.push(previewLine);
 
-            var previewMarker = L.circleMarker(e.latlng, {
+            var previewMarker = L.circleMarker(latlng, {
                 radius: 4,
                 color: styles.previewStrokeColor,
                 fillColor: styles.previewStrokeColor,
@@ -385,7 +538,7 @@ L.Measure = L.Control.extend({
             this._tempLayers.push(previewMarker);
 
             if (this.options.mode === 'area' && this._points.length > 0) {
-                var previewLine2 = L.polyline([this._points[0], e.latlng], {
+                var previewLine2 = L.polyline([this._points[0], latlng], {
                     color: styles.areaPreviewStrokeColor,
                     weight: styles.previewStrokeWeight,
                     dashArray: '5, 5',
@@ -401,7 +554,76 @@ L.Measure = L.Control.extend({
                 }).addTo(this._map);
                 this._tempLayers.push(polyline);
             }
+
+            // 距离测量：从第1个点开始显示实时结果
+            if (this.options.mode === 'distance' && this._points.length >= 1) {
+                var distance = 0;
+                for (var di = 1; di < this._points.length; di++) {
+                    distance += this._points[di].distanceTo(this._points[di - 1]);
+                }
+                // 加上到鼠标当前位置的距离
+                if (latlng) {
+                    distance += lastPoint.distanceTo(latlng);
+                }
+                var distanceText = this._formatResult(distance);
+                // 跟随鼠标位置
+                this._updateResultLabelOnMap(latlng, distanceText);
+            }
+            // 面积测量：从第2个点开始显示（此时有3个点可计算面积）
+            else if (this.options.mode === 'area' && this._points.length >= 2) {
+                var areaPoints = this._points.slice();
+                if (latlng) {
+                    areaPoints.push(latlng);
+                }
+                var area = this._geodesicArea(areaPoints);
+                var areaText = this._formatResult(area);
+                // 面积测量时显示在中心点
+                var labelPosition = this._getPolygonCenter(areaPoints);
+                this._updateResultLabelOnMap(labelPosition, areaText);
+            } else {
+                this._removeResultLabelOnMap();
+            }
         }
+    },
+
+    _updateResultLabelOnMap: function(latlng, text) {
+        if (!latlng || !text) {
+            this._removeResultLabelOnMap();
+            return;
+        }
+
+        if (this._currentResultLabel) {
+            this._currentResultLabel._currentText = text;
+            this._currentResultLabel.setLatLng(latlng);
+            this._currentResultLabel.setContent(text);
+        } else {
+            this._currentResultLabel = L.tooltip({
+                className: 'leaflet-measure-result-label',
+                permanent: true,
+                direction: 'top',
+                offset: [0, -10]
+            }).setContent(text).setLatLng(latlng).addTo(this._map);
+            this._currentResultLabel._currentText = text;
+        }
+    },
+
+    _removeResultLabelOnMap: function() {
+        if (this._currentResultLabel) {
+            if (this._map.hasLayer(this._currentResultLabel)) {
+                this._map.removeLayer(this._currentResultLabel);
+            }
+            this._currentResultLabel = null;
+        }
+    },
+
+    _getPolygonCenter: function(latlngs) {
+        if (!latlngs || latlngs.length === 0) return null;
+        var sumLat = 0, sumLng = 0;
+        for (var i = 0; i < latlngs.length; i++) {
+            sumLat += latlngs[i].lat;
+            sumLng += latlngs[i].lng;
+        }
+        return L.latLng(sumLat / latlngs.length, sumLng / latlngs.length);
     },
 
     _onDoubleClick: function(e) {
@@ -455,28 +677,6 @@ L.Measure = L.Control.extend({
         }
     },
 
-    _updateTempLayers: function() {
-        this._clearTempLayers();
-        var styles = this.options.styles;
-        var self = this;
-        this._points.forEach(function(pt) {
-            var marker = L.circleMarker(pt, {
-                radius: styles.pointRadius,
-                color: styles.strokeColor,
-                fillColor: styles.strokeColor,
-                fillOpacity: 1
-            }).addTo(self._map);
-            self._tempLayers.push(marker);
-        });
-        if (this._points.length > 1) {
-            var polyline = L.polyline(this._points.slice(), {
-                color: styles.strokeColor,
-                weight: styles.strokeWeight
-            }).addTo(this._map);
-            this._tempLayers.push(polyline);
-        }
-    },
-
     _clearTempLayers: function() {
         var self = this;
         this._tempLayers.forEach(function(layer) {
@@ -488,6 +688,8 @@ L.Measure = L.Control.extend({
     },
 
     _updatePreviewResults: function() {
+        if (!this._resultLabel || !this._resultValue) return;
+
         var length = 0;
         var area = 0;
         if (this._points.length > 1) {
@@ -498,7 +700,7 @@ L.Measure = L.Control.extend({
         if (this._points.length > 2) {
             area = this._geodesicArea(this._points);
         }
-        this._resultLabel.innerHTML = this.options.mode === 'distance' ? '📏 距离:' : '⬡ 面积:';
+        this._resultLabel.innerHTML = this.options.mode === 'distance' ? this.options.language.distanceLabel + ':' : this.options.language.areaLabel + ':';
         if (this.options.mode === 'distance') {
             this._resultValue.innerHTML = '<span>' + (length > 1000 ? (length / 1000).toFixed(2) + ' km' : length.toFixed(2) + ' m') + '</span>';
         } else {
@@ -507,56 +709,89 @@ L.Measure = L.Control.extend({
     },
 
     _updateHistoryDisplay: function() {
+        if (!this._historyDiv) return;
+
+        var lang = this.options.language;
         if (this._measureHistory.length === 0) {
-            this._historyDiv.innerHTML = '<div class="measure-no-history">暂无测量记录</div>';
-        } else {
-            var html = '';
-            this._measureHistory.forEach(function(m) {
-                html += '<div class="measure-history-item">';
-                html += '<span>' + (m.type === 'distance' ? '📏' : '⬡') + '</span>';
-                html += '<span>' + m.points.length + '点</span>';
-                html += '<span>' + m.result.toFixed(2) + '</span>';
-                html += '</div>';
-            });
-            this._historyDiv.innerHTML = html;
+            this._historyDiv.innerHTML = '<div class="measure-no-history">' + lang.noHistory + '</div>';
+            return;
         }
+
+        var html = '<div class="measure-history-title">' + lang.clearBtn + '</div>';
+        var self = this;
+        this._measureHistory.forEach(function(m, index) {
+            var icon = m.mode === 'distance' ? '📏' : '⬡';
+            var label = m.mode === 'distance' ? lang.distanceLabel : lang.areaLabel;
+            var value = self._formatResult(m.result);
+            html += '<div class="measure-history-item" data-index="' + index + '">';
+            html += '<span class="measure-history-icon">' + icon + '</span>';
+            html += '<span class="measure-history-label">' + label + ':</span>';
+            html += '<span class="measure-history-value">' + value + '</span>';
+            html += '</div>';
+        });
+        this._historyDiv.innerHTML = html;
+
+        var self = this;
+        var items = this._historyDiv.querySelectorAll('.measure-history-item');
+        items.forEach(function(item) {
+            L.DomEvent.on(item, 'click', function() {
+                var index = parseInt(this.getAttribute('data-index'));
+                var measurement = self._measureHistory[index];
+                if (measurement) {
+                    measurement.geometries.forEach(function(layer) {
+                        if (self._map.hasLayer(layer)) {
+                            self._map.removeLayer(layer);
+                        }
+                    });
+                    self._measureHistory.splice(index, 1);
+                    self._updateHistoryDisplay();
+                }
+            });
+        });
     },
 
-    _geodesicArea: function(latlngs) {
-        var earthRadius = 6371000;
-        var total = 0;
-        var len = latlngs.length;
-        if (len > 2) {
-            for (var i = 0; i < len; i++) {
-                var p1 = latlngs[i];
-                var p2 = latlngs[(i + 1) % len];
-                var lat1 = p1.lat * Math.PI / 180;
-                var lat2 = p2.lat * Math.PI / 180;
-                var lon1 = p1.lng * Math.PI / 180;
-                var lon2 = p2.lng * Math.PI / 180;
-                total += (lon2 - lon1) * (2 + Math.sin(lat1) + Math.sin(lat2));
-            }
-            total = Math.abs(total * earthRadius * earthRadius / 2);
+    _geodesicArea: function(latLngs) {
+        var points = [];
+        for (var i = 0; i < latLngs.length; i++) {
+            points.push([latLngs[i].lat, latLngs[i].lng]);
         }
-        return total;
+        var rad = Math.PI / 180;
+        var earthRadius = 6371000;
+        var area = 0;
+        var len = points.length;
+        if (len < 3) return 0;
+
+        for (var i = 0; i < len; i++) {
+            var j = (i + 1) % len;
+            var xi = points[i][0] * rad;
+            var yi = points[i][1] * rad;
+            var xj = points[j][0] * rad;
+            var yj = points[j][1] * rad;
+
+            area += yj * Math.sin(xi) - yi * Math.sin(xj);
+        }
+
+        area = Math.abs(area * earthRadius * earthRadius / 2);
+        return area;
     }
 });
 
-L.Measure.include(L.Mixin.Events);
-
-L.measure = function(options) {
-    return new L.Measure(options);
+L.measure = function(mode, options) {
+    return new L.Measure(mode, options);
 };
 
-L.Control.Measure = L.Measure;
-
-L.Map.addInitHook(function() {
-    if (this.options.measureControl) {
-        this.measureControl = L.measure(this.options.measureControl);
+L.Map.addInitHook(function(opts) {
+    if (opts && opts.measureControl) {
+        var mode = 'distance';
+        var options = opts.measureControl;
+        if (typeof opts.measureControl === 'string') {
+            mode = opts.measureControl;
+            options = {};
+        } else if (typeof opts.measureControl === 'object') {
+            mode = opts.measureControl.mode || 'distance';
+            options = opts.measureControl;
+        }
+        this.measureControl = L.measure(mode, options);
         this.addControl(this.measureControl);
     }
-});
-
-L.Map.mergeOptions({
-    measureControl: false
 });

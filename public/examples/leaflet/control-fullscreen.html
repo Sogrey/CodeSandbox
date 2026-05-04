@@ -50,42 +50,29 @@ CodeSandbox 分享文件
     center: [30.53, 114.3],
     zoom: 12,
     layers: [vec],
-    zoomControl: false,
-    fullscreenControl: true
+    zoomControl: false
   });
 
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  L.control.fullscreen({
+  var fullscreenControl = L.control.fullscreen({
     position: 'topright',
-    title: '进入全屏',
-    titleCancel: '退出全屏',
-    forceSeparate: true,
-    pseudoFullscreen: false
+    titleEnter: '进入全屏',
+    titleExit: '退出全屏'
   }).addTo(map);
 
-  var isFullscreen = false;
+  const fullscreenchange = function() {
+    var isFullscreen = map.isFullscreen();
+    document.getElementById('fullscreenStatus').innerText = isFullscreen ? '全屏模式' : '普通模式';
+    document.getElementById('fullscreenBtn').innerText = isFullscreen ? '⛶ 退出全屏' : '⛶ 进入全屏';
+  }
 
-  map.on('enterFullscreen', function() {
-    isFullscreen = true;
-    document.getElementById('fullscreenStatus').innerText = '全屏模式';
-    document.getElementById('fullscreenBtn').innerText = '⛶ 退出全屏';
-    document.getElementById('controlPanel').style.display = 'none';
-  });
-
-  map.on('exitFullscreen', function() {
-    isFullscreen = false;
-    document.getElementById('fullscreenStatus').innerText = '普通模式';
-    document.getElementById('fullscreenBtn').innerText = '⛶ 进入全屏';
-    document.getElementById('controlPanel').style.display = 'block';
-  });
+  map.on('fullscreenchange', fullscreenchange);
+  // 或
+  // fullscreenControl.on('fullscreenchange', fullscreenchange);
 
   document.getElementById('fullscreenBtn').addEventListener('click', function() {
-    if (isFullscreen) {
-      map.getFullscreenControl()._exitFullscreen();
-    } else {
-      map.getFullscreenControl()._enterFullscreen();
-    }
+    map.toggleFullscreen();
   });
 </script>
 <style>
@@ -118,25 +105,26 @@ CodeSandbox 分享文件
   }
   .info-panel span { color: #ffd966; font-weight: 600; }
 
-  .leaflet-fullscreen-button {
+  .leaflet-control-fullscreen a {
     background: rgba(255,255,255,0.95) !important;
     backdrop-filter: blur(12px) !important;
     border-radius: 8px !important;
     box-shadow: 0 8px 20px rgba(0,0,0,0.12) !important;
     width: 40px !important;
     height: 40px !important;
-    margin: 8px !important;
-    transition: all 0.2s ease !important;
-  }
-
-  .leaflet-fullscreen-button:hover {
-    background: #006eff !important;
-  }
-
-  .leaflet-fullscreen-button::after {
-    content: '⛶' !important;
-    font-size: 18px !important;
     line-height: 40px !important;
+    text-align: center !important;
+    transition: all 0.2s ease !important;
+    font-size: 18px !important;
+  }
+
+  .leaflet-control-fullscreen a:hover {
+    background: #006eff !important;
+    color: white !important;
+  }
+
+  .leaflet-control-fullscreen a::after {
+    content: '⛶' !important;
   }
 
   .leaflet-control-zoom {
@@ -159,9 +147,9 @@ CodeSandbox 分享文件
 
 </head-metadata>
 <css-links>
-
+../../libs/leaflet/plugins/Leaflet.fullscreen/Leaflet.fullscreen.css
 </css-links>
 <js-links>
-
+../../libs/leaflet/plugins/Leaflet.fullscreen/Leaflet.fullscreen.js
 </js-links>
 </settings>

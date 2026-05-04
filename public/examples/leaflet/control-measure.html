@@ -12,6 +12,16 @@ CodeSandbox 分享文件
 <meta name="description" content="Leaflet 测量控件示例，使用 leaflet-measure 插件测量距离和面积。" />
 <template>
 <div id="map"></div>
+<div class="demo-toolbar">
+  <select id="modeSelect" class="toolbar-select">
+    <option value="distance" selected>📍 距离测量</option>
+    <option value="area">⬡ 面积测量</option>
+  </select>
+  <button id="btnStart" class="toolbar-btn">🎯 开始测量</button>
+  <button id="btnEnd" class="toolbar-btn" disabled>✔ 结束测量</button>
+  <button id="btnClear" class="toolbar-btn" disabled>🗑️ 清除</button>
+  <span class="result-display" id="resultDisplay">结果: --</span>
+</div>
 </template>
 <script>
   L.tileLayer.amap = function(option) {
@@ -44,28 +54,120 @@ CodeSandbox 分享文件
 
   L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-  var measureControl = L.measure().addTo(map);
+  var measureControl = L.measure('distance', {
+    position: 'topright',
+    showUI: false,
+    unit: 'm'
+  }).addTo(map);
+
+  var btnStart = document.getElementById('btnStart');
+  var btnEnd = document.getElementById('btnEnd');
+  var btnClear = document.getElementById('btnClear');
+  var resultDisplay = document.getElementById('resultDisplay');
+  var modeSelect = document.getElementById('modeSelect');
+
+  modeSelect.addEventListener('change', function() {
+    var mode = modeSelect.value;
+    measureControl.setMode(mode);
+  });
+
+  btnStart.addEventListener('click', function() {
+    measureControl.startMeasuring();
+    btnStart.disabled = true;
+    btnEnd.disabled = false;
+    modeSelect.disabled = true;
+    resultDisplay.textContent = '测量中... 点击添加点';
+  });
+
+  btnEnd.addEventListener('click', function() {
+    measureControl.finishMeasuring();
+    btnStart.disabled = false;
+    btnEnd.disabled = true;
+    modeSelect.disabled = false;
+  });
+
+  btnClear.addEventListener('click', function() {
+    measureControl.clearAllResults();
+    btnStart.disabled = false;
+    btnEnd.disabled = true;
+    btnClear.disabled = true;
+    modeSelect.disabled = false;
+    resultDisplay.textContent = '结果: --';
+  });
 
   measureControl.on('measure:start', function(e) {
     console.log('测量开始', e.mode);
+    btnClear.disabled = false;
   });
 
   measureControl.on('measure:end', function(e) {
     console.log('测量结束', e);
+    var value = e.result > 1000 ? (e.result / 1000).toFixed(2) + ' km' : e.result.toFixed(2) + ' m';
+    resultDisplay.textContent = '结果: ' + value;
+    btnStart.disabled = false;
+    btnEnd.disabled = true;
+    modeSelect.disabled = false;
   });
 
   measureControl.on('measure:cancel', function() {
     console.log('测量取消');
+    resultDisplay.textContent = '结果: --';
+    btnStart.disabled = false;
+    btnEnd.disabled = true;
+    modeSelect.disabled = false;
   });
 
   measureControl.on('measure:clear', function() {
     console.log('测量结果已清除');
+    resultDisplay.textContent = '结果: --';
+  });
+
+  measureControl.on('measure:pointAdded', function(e) {
+    console.log('添加了点', e.pointCount, '个', e.latlng);
   });
 </script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Inter', 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
   #map { width: 100%; height: 100%; }
+
+  .demo-toolbar {
+    position: absolute; top: 20px; right: 20px;
+    z-index: 1000; background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(12px); border-radius: 12px;
+    padding: 12px; display: flex; flex-direction: column; gap: 8px; align-items: stretch;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 140px;
+  }
+  .toolbar-select {
+    padding: 8px 12px; border: 1px solid rgba(0,102,255,0.2);
+    border-radius: 8px; background: rgba(255,255,255,0.95);
+    color: #1e2a3a; font-size: 13px; font-weight: 500;
+    cursor: pointer; outline: none; transition: all 0.2s ease;
+  }
+  .toolbar-select:hover:not(:disabled) {
+    border-color: #006eff;
+  }
+  .toolbar-select:disabled {
+    opacity: 0.5; cursor: not-allowed;
+  }
+  .toolbar-btn {
+    padding: 8px 12px; border: none; border-radius: 8px;
+    background: rgba(30,35,48,0.08); color: #1e2a3a;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .toolbar-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg,#006eff,#0052cc);
+    color: white;
+  }
+  .toolbar-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .result-display {
+    margin-top: 4px; padding: 8px 12px;
+    background: rgba(0,102,255,0.1); border-radius: 6px;
+    color: #006eff; font-weight: 600; font-size: 13px;
+    text-align: center;
+  }
 
   .leaflet-control-zoom {
     position: absolute !important; bottom: 20px !important; right: 20px !important;
@@ -82,7 +184,6 @@ CodeSandbox 分享文件
     background: rgba(0,0,0,0.6) !important; color: #ccc !important; font-size: 10px !important;
   }
 </style>
-
 <settings>
 <head-metadata>
 

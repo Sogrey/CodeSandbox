@@ -145,13 +145,16 @@ CodeSandbox 分享文件
     }
   }).addTo(map);
 
-  graticule.bindTooltip(function(latlng) {
-    return L.tooltip({
-      permanent: true,
-      direction: 'center',
-      className: 'graticule-label'
-    }).setContent(latlng.properties.name);
-  }, { layer: graticule });
+  graticule.eachLayer(function(layer) {
+    var name = layer.feature && layer.feature.properties && layer.feature.properties.name;
+    if (name) {
+      layer.bindTooltip(L.tooltip({
+        permanent: true,
+        direction: 'center',
+        className: 'graticule-label'
+      }).setContent(name), { layer: layer });
+    }
+  });
 
   document.getElementById('showGraticule').addEventListener('change', function() {
     if (this.checked) {

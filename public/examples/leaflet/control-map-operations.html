@@ -1,0 +1,323 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/5
+页面标题: Leaflet 地图操作示例
+原始页面链接: https://sogrey.top/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>leaflet</engine-type>
+<title>Leaflet 地图操作示例</title>
+<meta name="description" content="Leaflet.js 地图操作综合示例，包含地图背景设置、定位、显示级数设置和当前信息获取功能。" />
+<template>
+<div class="toolbar">
+  <div class="tool-section">
+    <h3>🗺️ 背景</h3>
+    <select id="bgSelect" onchange="changeBackground()">
+      <option value="none">无背景</option>
+      <option value="grid">网格</option>
+      <option value="gradient">渐变</option>
+    </select>
+  </div>
+
+  <div class="tool-section">
+    <h3>📍 定位</h3>
+    <label>经度:</label>
+    <input type="text" id="Xposition" value="114.3948" />
+    <label>纬度:</label>
+    <input type="text" id="Yposition" value="30.5217" />
+    <button onclick="mapMove()" class="btn">平移</button>
+    <button onclick="restore()" class="btn">复位</button>
+  </div>
+
+  <div class="tool-section">
+    <h3>🔍 级数</h3>
+    <label>级:</label>
+    <input type="text" id="level" value="15" />
+    <button onclick="zoomToLevel()" class="btn">设置</button>
+    <button onclick="zoomIn()" class="btn">+</button>
+    <button onclick="zoomOut()" class="btn">-</button>
+  </div>
+
+  <div class="tool-section">
+    <h3>📊 信息</h3>
+    <button onclick="getCurCenter()" class="btn">中心</button>
+    <button onclick="getCurZoom()" class="btn">级数</button>
+    <button onclick="getCurBound()" class="btn">范围</button>
+    <button onclick="getMapDivInfo()" class="btn">视口</button>
+    <div class="result-panel" id="resultPanel">
+      <div id="resultContent">点击上方按钮查看信息</div>
+    </div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<div class="info-panel">
+  <div>中心: <span id="infoCenter">-</span></div>
+  <div>级数: <span id="infoZoom">-</span></div>
+  <div>范围: <span id="infoBounds">-</span></div>
+</div>
+</template>
+<script>
+  L.tileLayer.amap = function(option) {
+    option = option || {};
+    var layer;
+    var subdomains = "1234";
+    switch (option.layer) {
+      case "vec":
+      default:
+        layer = L.tileLayer(
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}", {
+            name: option.name || "矢量图",
+            subdomains: subdomains,
+            attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+          }
+        );
+        break;
+    }
+    return layer;
+  };
+
+  var map;
+  var vecLayer = L.tileLayer.amap({ layer: "vec", name: "矢量图" });
+
+  function init() {
+    map = L.map('map', {
+      crs: L.CRS.EPSG3857,
+      center: [30.5217, 114.3948],
+      minZoom: 1,
+      maxZoom: 18,
+      zoom: 15,
+      layers: [vecLayer],
+      maxBounds: L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180))
+    });
+
+    map.on('moveend zoomend', updateInfo);
+    updateInfo();
+  }
+
+  init();
+
+  function changeBackground() {
+    var bg = document.getElementById('bgSelect').value;
+    var mapContainer = document.getElementById('map');
+    
+    switch(bg) {
+      case 'grid':
+        mapContainer.style.backgroundImage = 'linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)';
+        mapContainer.style.backgroundSize = '50px 50px';
+        break;
+      case 'gradient':
+        mapContainer.style.backgroundImage = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        mapContainer.style.backgroundSize = 'cover';
+        break;
+      default:
+        mapContainer.style.backgroundImage = 'none';
+    }
+  }
+
+  function mapMove() {
+    var X = document.getElementById("Xposition").value;
+    var Y = document.getElementById("Yposition").value;
+    
+    if (X != "" && Y != "") {
+      if (!isNaN(X) && !isNaN(Y)) {
+        var pntX = parseFloat(X);
+        var pntY = parseFloat(Y);
+        
+        if (pntY >= -90 && pntY <= 90 && pntX >= -180 && pntX <= 180) {
+          var coordinate = [pntY, pntX];
+          map.setView(coordinate, map.getZoom());
+        } else {
+          alert('请输入有效的经纬度！\n纬度: -90~90\n经度: -180~180');
+        }
+      } else {
+        alert('请输入数字！');
+      }
+    } else {
+      alert('请输入内容！');
+    }
+  }
+
+  function restore() {
+    map.setView([30.5217, 114.3948], 15);
+  }
+
+  function zoomToLevel() {
+    var zoomLevel = document.getElementById("level").value;
+    
+    if (zoomLevel % 1 == 0 && zoomLevel >= 0) {
+      if (zoomLevel <= 18) {
+        map.setView(map.getCenter(), parseInt(zoomLevel));
+      } else {
+        alert("最大显示级数为18！");
+      }
+    } else {
+      alert("请输入非负整数！");
+    }
+  }
+
+  function zoomIn() {
+    map.zoomIn();
+  }
+
+  function zoomOut() {
+    map.zoomOut();
+  }
+
+  function getCurCenter() {
+    var center = map.getCenter();
+    document.getElementById('resultContent').innerHTML = 
+      '<strong>当前中心</strong><br/>' +
+      '纬度: ' + center.lat.toFixed(6) + '<br/>' +
+      '经度: ' + center.lng.toFixed(6);
+  }
+
+  function getCurZoom() {
+    var zoom = map.getZoom();
+    document.getElementById('resultContent').innerHTML = 
+      '<strong>当前级数</strong><br/>' +
+      zoom + ' 级';
+  }
+
+  function getCurBound() {
+    var ex = map.getBounds();
+    var ymin = ex._southWest.lat.toFixed(6);
+    var xmin = ex._southWest.lng.toFixed(6);
+    var ymax = ex._northEast.lat.toFixed(6);
+    var xmax = ex._northEast.lng.toFixed(6);
+    document.getElementById('resultContent').innerHTML = 
+      '<strong>地图范围</strong><br/>' +
+      '纬度: ' + ymin + ' ~ ' + ymax + '<br/>' +
+      '经度: ' + xmin + ' ~ ' + xmax;
+  }
+
+  function getMapDivInfo() {
+    var mapSize = map.getSize();
+    document.getElementById('resultContent').innerHTML = 
+      '<strong>视口大小</strong><br/>' +
+      '宽度: ' + mapSize.x + ' px<br/>' +
+      '高度: ' + mapSize.y + ' px';
+  }
+
+  function updateInfo() {
+    var center = map.getCenter();
+    document.getElementById('infoCenter').textContent = 
+      center.lat.toFixed(4) + ', ' + center.lng.toFixed(4);
+    document.getElementById('infoZoom').textContent = map.getZoom() + '级';
+    
+    var bounds = map.getBounds();
+    document.getElementById('infoBounds').textContent = 
+      bounds.getSouthWest().lat.toFixed(4) + ',' + bounds.getSouthWest().lng.toFixed(4) + 
+      ' ~ ' + 
+      bounds.getNorthEast().lat.toFixed(4) + ',' + bounds.getNorthEast().lng.toFixed(4);
+  }
+
+  window.onload = init;
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; height: 100vh; overflow: hidden; }
+  #map { width: 100%; height: 100%; background-color: #e8e8e8; }
+
+  .toolbar {
+    position: absolute; top: 15px; right: 15px; z-index: 1000;
+    background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px);
+    border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 12px; min-width: 240px;
+  }
+
+  .tool-section {
+    margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;
+  }
+
+  .tool-section:last-child {
+    margin-bottom: 0; padding-bottom: 0; border-bottom: none;
+  }
+
+  .tool-section h3 {
+    font-size: 12px; font-weight: 600; color: #1e2a3a; margin-bottom: 8px;
+  }
+
+  .tool-section label {
+    font-size: 11px; color: #6b7280; margin-right: 4px;
+  }
+
+  .tool-section input[type="text"] {
+    padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;
+    font-size: 11px; width: 80px; margin-right: 4px;
+    outline: none; transition: border-color 0.2s;
+  }
+
+  .tool-section input[type="text"]:focus {
+    border-color: #006eff;
+  }
+
+  .tool-section select {
+    padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;
+    font-size: 11px; min-width: 100px;
+    outline: none; cursor: pointer;
+  }
+
+  .btn {
+    background: linear-gradient(135deg, #006eff, #0052cc);
+    border: none; color: white; padding: 4px 10px;
+    border-radius: 4px; font-size: 11px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; margin-right: 4px;
+  }
+
+  .btn:hover {
+    opacity: 0.9; transform: translateY(-0.5px);
+  }
+
+  .result-panel {
+    margin-top: 8px; padding: 8px;
+    background: #f8fafc; border-radius: 4px;
+    border: 1px solid #e2e8f0;
+    font-size: 11px; color: #334155;
+    min-height: 50px;
+  }
+
+  .result-panel strong {
+    color: #1e293b;
+  }
+
+  .info-panel {
+    position: absolute; bottom: 15px; left: 15px; z-index: 1000;
+    background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(12px);
+    border-radius: 8px; padding: 10px;
+    font-size: 11px; color: #f0f9ff; font-family: 'Consolas', monospace;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .info-panel div {
+    margin-bottom: 4px;
+  }
+
+  .info-panel div:last-child {
+    margin-bottom: 0;
+  }
+
+  .info-panel span {
+    color: #ffd966; font-weight: 600;
+  }
+
+  .leaflet-control-attribution {
+    background: rgba(0, 0, 0, 0.6) !important;
+    color: #ccc !important;
+    font-size: 10px !important;
+  }
+</style>
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

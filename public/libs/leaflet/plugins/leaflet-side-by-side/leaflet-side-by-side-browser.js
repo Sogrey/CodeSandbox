@@ -10,16 +10,20 @@
     mapWasDragEnabled = this._map.dragging.enabled();
     mapWasTapEnabled = this._map.tap && this._map.tap.enabled();
     this._map.dragging.disable();
-    this._map.tap && this._map.tap.disable();
+    if (this._map.tap) {
+      this._map.tap.disable();
+    }
   }
 
   function uncancelMapDrag(e) {
     if (!this._map) return;
-    this._refocusOnMap && this._refocusOnMap(e);
+    if (typeof this._refocusOnMap === 'function') {
+      this._refocusOnMap(e);
+    }
     if (mapWasDragEnabled) {
       this._map.dragging.enable();
     }
-    if (mapWasTapEnabled) {
+    if (mapWasTapEnabled && this._map.tap) {
       this._map.tap.enable();
     }
   }
@@ -147,12 +151,20 @@
         }
       }, this);
       if (prevLeft !== this._leftLayer) {
-        prevLeft && this.fire('leftlayerremove', {layer: prevLeft});
-        this._leftLayer && this.fire('leftlayeradd', {layer: this._leftLayer});
+        if (prevLeft && typeof this.fire === 'function') {
+          this.fire('leftlayerremove', {layer: prevLeft});
+        }
+        if (this._leftLayer && typeof this.fire === 'function') {
+          this.fire('leftlayeradd', {layer: this._leftLayer});
+        }
       }
       if (prevRight !== this._rightLayer) {
-        prevRight && this.fire('rightlayerremove', {layer: prevRight});
-        this._rightLayer && this.fire('rightlayeradd', {layer: this._rightLayer});
+        if (prevRight && typeof this.fire === 'function') {
+          this.fire('rightlayerremove', {layer: prevRight});
+        }
+        if (this._rightLayer && typeof this.fire === 'function') {
+          this.fire('rightlayeradd', {layer: this._rightLayer});
+        }
       }
       this._updateClip();
     },

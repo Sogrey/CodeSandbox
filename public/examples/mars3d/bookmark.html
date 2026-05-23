@@ -1,0 +1,403 @@
+<!-- CodeSandbox Template File -->
+<engine-type>mars3d</engine-type>
+<title>视角书签</title>
+<meta name="description" content="Mars3D 视角书签管理示例" />
+<template>
+  <div id="map3dContainer"></div>
+</template>
+<script>
+  let map
+  let logger
+  let bookmarks = []
+  let bookmarkIdCounter = 0
+
+  function createLogger() {
+    const container = document.createElement('div')
+    container.id = 'loggerContainer'
+    container.style.position = 'fixed'
+    container.style.bottom = '20px'
+    container.style.right = '20px'
+    container.style.width = '400px'
+    container.style.maxHeight = '200px'
+    container.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'
+    container.style.border = '1px solid #333'
+    container.style.borderRadius = '6px'
+    container.style.overflow = 'hidden'
+    container.style.zIndex = '999'
+    container.style.fontFamily = 'Consolas, Monaco, monospace'
+    container.style.fontSize = '12px'
+    container.style.color = '#0f0'
+
+    const header = document.createElement('div')
+    header.style.backgroundColor = '#222'
+    header.style.padding = '8px 12px'
+    header.style.borderBottom = '1px solid #333'
+    header.innerHTML = '<span style="color: #888;">▶</span> 日志输出'
+    container.appendChild(header)
+
+    const content = document.createElement('div')
+    content.id = 'loggerContent'
+    content.style.padding = '8px 12px'
+    content.style.height = 'calc(100% - 36px)'
+    content.style.overflowY = 'auto'
+    container.appendChild(content)
+
+    document.body.appendChild(container)
+
+    return {
+      log: function(message, type = 'info') {
+        const now = new Date()
+        const time = now.toLocaleTimeString()
+        const color = type === 'error' ? '#f44' : type === 'warn' ? '#fa0' : '#0f0'
+
+        const line = document.createElement('div')
+        line.style.marginBottom = '4px'
+        line.style.color = color
+        line.innerHTML = `<span style="color: #666;">[${time}]</span> ${message}`
+
+        content.appendChild(line)
+        content.scrollTop = content.scrollHeight
+      }
+    }
+  }
+
+  function createBookmarkPanel() {
+    const panel = document.createElement('div')
+    panel.id = 'bookmarkPanel'
+    panel.style.position = 'fixed'
+    panel.style.top = '50px'
+    panel.style.right = '20px'
+    panel.style.width = '260px'
+    panel.style.maxHeight = 'calc(100% - 120px)'
+    panel.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'
+    panel.style.border = '1px solid #333'
+    panel.style.borderRadius = '6px'
+    panel.style.overflow = 'hidden'
+    panel.style.zIndex = '999'
+    panel.style.fontFamily = 'Consolas, Monaco, monospace'
+    panel.style.fontSize = '12px'
+
+    const header = document.createElement('div')
+    header.style.backgroundColor = '#222'
+    header.style.padding = '10px 12px'
+    header.style.borderBottom = '1px solid #333'
+    header.style.display = 'flex'
+    header.style.alignItems = 'center'
+    header.style.justifyContent = 'space-between'
+    header.innerHTML = '<span style="color: #0f0;">📌</span> <span style="color: #fff;">视角书签</span>'
+    panel.appendChild(header)
+
+    const inputContainer = document.createElement('div')
+    inputContainer.style.display = 'flex'
+    inputContainer.style.padding = '8px'
+    inputContainer.style.gap = '8px'
+    inputContainer.style.borderBottom = '1px solid #333'
+
+    const input = document.createElement('input')
+    input.type = 'text'
+    input.id = 'bookmarkNameInput'
+    input.placeholder = '输入书签名称'
+    input.style.flex = '1'
+    input.style.padding = '6px 8px'
+    input.style.border = '1px solid #444'
+    input.style.borderRadius = '4px'
+    input.style.backgroundColor = '#333'
+    input.style.color = '#fff'
+    input.style.fontSize = '12px'
+    inputContainer.appendChild(input)
+
+    const addBtn = document.createElement('button')
+    addBtn.id = 'addBookmarkBtn'
+    addBtn.textContent = '添加'
+    addBtn.style.padding = '6px 12px'
+    addBtn.style.border = '1px solid #0a8'
+    addBtn.style.borderRadius = '4px'
+    addBtn.style.backgroundColor = 'rgba(0, 170, 136, 0.3)'
+    addBtn.style.color = '#0f0'
+    addBtn.style.cursor = 'pointer'
+    addBtn.style.fontSize = '12px'
+    addBtn.onclick = function() { addBookmark() }
+    inputContainer.appendChild(addBtn)
+
+    panel.appendChild(inputContainer)
+
+    const listContainer = document.createElement('div')
+    listContainer.id = 'bookmarkList'
+    listContainer.style.maxHeight = 'calc(100% - 100px)'
+    listContainer.style.overflowY = 'auto'
+    listContainer.style.padding = '8px'
+
+    const emptyMsg = document.createElement('div')
+    emptyMsg.id = 'emptyBookmarkMsg'
+    emptyMsg.style.color = '#666'
+    emptyMsg.style.textAlign = 'center'
+    emptyMsg.style.padding = '20px'
+    emptyMsg.textContent = '暂无书签'
+    listContainer.appendChild(emptyMsg)
+
+    panel.appendChild(listContainer)
+
+    document.body.appendChild(panel)
+
+    input.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        addBookmark()
+      }
+    })
+  }
+
+  function addBookmark() {
+    if (!map) return
+
+    const input = document.getElementById('bookmarkNameInput')
+    const name = input.value.trim()
+
+    if (!name) {
+      logger.log('请输入书签名称', 'warn')
+      return
+    }
+
+    const exists = bookmarks.some(function(b) { return b.name === name })
+    if (exists) {
+      logger.log('书签 "' + name + '" 已存在', 'warn')
+      return
+    }
+
+    const center = map.getCameraView()
+    const id = bookmarkIdCounter++
+
+    const bookmark = {
+      id: id,
+      name: name,
+      center: center
+    }
+
+    map.expImage({
+      download: false,
+      width: 240
+    }).then(function(result) {
+      bookmark.thumbnail = result.image
+      bookmarks.push(bookmark)
+      renderBookmarkList()
+      saveBookmarks()
+      logger.log('已添加书签: ' + name)
+    }).catch(function() {
+      bookmarks.push(bookmark)
+      renderBookmarkList()
+      saveBookmarks()
+      logger.log('已添加书签: ' + name)
+    })
+
+    input.value = ''
+  }
+
+  function renderBookmarkList() {
+    const listContainer = document.getElementById('bookmarkList')
+    const emptyMsg = document.getElementById('emptyBookmarkMsg')
+
+    listContainer.innerHTML = ''
+
+    if (bookmarks.length === 0) {
+      const empty = document.createElement('div')
+      empty.style.color = '#666'
+      empty.style.textAlign = 'center'
+      empty.style.padding = '20px'
+      empty.textContent = '暂无书签'
+      listContainer.appendChild(empty)
+      return
+    }
+
+    bookmarks.forEach(function(bookmark) {
+      const item = document.createElement('div')
+      item.className = 'bookmark-item'
+      item.style.marginBottom = '8px'
+      item.style.border = '1px solid #333'
+      item.style.borderRadius = '4px'
+      item.style.overflow = 'hidden'
+      item.style.backgroundColor = 'rgba(30, 30, 30, 0.8)'
+
+      const flyBtn = document.createElement('div')
+      flyBtn.className = 'bookmark-fly-btn'
+      flyBtn.style.cursor = 'pointer'
+      flyBtn.style.padding = '8px'
+      flyBtn.style.display = 'flex'
+      flyBtn.style.alignItems = 'center'
+      flyBtn.style.gap = '8px'
+      flyBtn.style.borderBottom = '1px solid #333'
+
+      if (bookmark.thumbnail) {
+        const thumb = document.createElement('img')
+        thumb.src = bookmark.thumbnail
+        thumb.style.width = '60px'
+        thumb.style.height = '40px'
+        thumb.style.objectFit = 'cover'
+        thumb.style.borderRadius = '2px'
+        flyBtn.appendChild(thumb)
+      }
+
+      const info = document.createElement('div')
+      info.style.flex = '1'
+
+      const nameSpan = document.createElement('div')
+      nameSpan.style.color = '#fff'
+      nameSpan.style.fontSize = '12px'
+      nameSpan.style.marginBottom = '2px'
+      nameSpan.textContent = bookmark.name
+      info.appendChild(nameSpan)
+
+      const coordSpan = document.createElement('div')
+      coordSpan.style.color = '#666'
+      coordSpan.style.fontSize = '10px'
+      coordSpan.textContent = 'lat:' + bookmark.center.lat.toFixed(4) + ' lng:' + bookmark.center.lng.toFixed(4)
+      info.appendChild(coordSpan)
+
+      flyBtn.appendChild(info)
+
+      const deleteBtn = document.createElement('button')
+      deleteBtn.className = 'bookmark-delete-btn'
+      deleteBtn.textContent = '✕'
+      deleteBtn.style.padding = '4px 8px'
+      deleteBtn.style.border = '1px solid #a44'
+      deleteBtn.style.borderRadius = '4px'
+      deleteBtn.style.backgroundColor = 'rgba(170, 68, 68, 0.3)'
+      deleteBtn.style.color = '#f44'
+      deleteBtn.style.cursor = 'pointer'
+      deleteBtn.style.fontSize = '10px'
+      deleteBtn.onclick = function(e) {
+        e.stopPropagation()
+        deleteBookmark(bookmark.id)
+      }
+      flyBtn.appendChild(deleteBtn)
+
+      flyBtn.onclick = function() {
+        flyToBookmark(bookmark)
+      }
+
+      item.appendChild(flyBtn)
+      listContainer.appendChild(item)
+    })
+  }
+
+  function flyToBookmark(bookmark) {
+    if (!map) return
+    map.setCameraView(bookmark.center)
+    logger.log('飞向: ' + bookmark.name)
+  }
+
+  function deleteBookmark(id) {
+    const index = bookmarks.findIndex(function(b) { return b.id === id })
+    if (index !== -1) {
+      const name = bookmarks[index].name
+      bookmarks.splice(index, 1)
+      renderBookmarkList()
+      saveBookmarks()
+      logger.log('已删除书签: ' + name)
+    }
+  }
+
+  function saveBookmarks() {
+    try {
+      const data = bookmarks.map(function(b) {
+        return { id: b.id, name: b.name, center: b.center }
+      })
+      localStorage.setItem('mars3d_bookmarks', JSON.stringify(data))
+    } catch (e) {
+      console.warn('保存书签失败:', e)
+    }
+  }
+
+  function loadBookmarks() {
+    try {
+      const data = localStorage.getItem('mars3d_bookmarks')
+      if (data) {
+        const parsed = JSON.parse(data)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed.forEach(function(item) {
+            bookmarks.push(item)
+            bookmarkIdCounter = Math.max(bookmarkIdCounter, item.id + 1)
+          })
+          renderBookmarkList()
+          logger.log('已加载 ' + bookmarks.length + ' 个书签')
+        }
+      }
+    } catch (e) {
+      console.warn('加载书签失败:', e)
+    }
+  }
+
+  function initMap() {
+    map = new mars3d.Map('map3dContainer', {
+      scene: {
+        center: { lat: 34.265, lng: 108.954, alt: 8000, heading: 0, pitch: -45 }
+      },
+      control: {
+        baseLayerPicker: true,
+        homeButton: true,
+        sceneModePicker: true,
+        navigationHelpButton: true,
+        fullscreenButton: true,
+        contextmenu: { hasDefault: true },
+      },
+      terrain: {
+        url: 'https://data.mars3d.cn/terrain',
+        show: true,
+      },
+      basemaps: [
+        {
+          name: '天地图影像',
+          icon: 'https://data.mars3d.cn/img/thumbnail/basemap/tdt_img.png',
+          type: 'tdt',
+          layer: 'img_d',
+          show: true,
+        },
+      ],
+    })
+
+    createBookmarkPanel()
+    logger = createLogger()
+
+    logger.log('mars3d 地图初始化完成')
+    loadBookmarks()
+
+    if (bookmarks.length === 0) {
+      logger.log('点击"添加"按钮保存当前视角')
+    }
+
+    return map
+  }
+
+  initMap()
+</script>
+<style>
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(270deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+  }
+
+  #map3dContainer {
+    width: 100%;
+    height: 100%;
+  }
+
+  .bookmark-item:hover {
+    border-color: #0a8 !important;
+  }
+
+  .bookmark-fly-btn:hover {
+    background-color: rgba(0, 170, 136, 0.2) !important;
+  }
+</style>
+
+<!-- Settings Section -->
+<settings>
+  <head-metadata> </head-metadata>
+  <css-links>
+  </css-links>
+  <js-links>
+  </js-links>
+</settings>

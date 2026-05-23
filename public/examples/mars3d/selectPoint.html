@@ -1,0 +1,490 @@
+<!-- CodeSandbox Template File -->
+<engine-type>mars3d</engine-type>
+<title>坐标拾取和转换</title>
+<meta name="description" content="Mars3D 坐标拾取和多种坐标系转换示例" />
+<template>
+  <div id="map3dContainer"></div>
+</template>
+<script>
+  let map
+  let logger
+  let pointEntity = null
+
+  let currentCoord = {
+    lng: 108.954,
+    lat: 34.265,
+    alt: 100
+  }
+
+  let coordOptions = {
+    coordType: 'decimal',
+    gkZoneType: 'zone3'
+  }
+
+  function createLogger() {
+    const container = document.createElement('div')
+    container.id = 'loggerContainer'
+    container.style.position = 'fixed'
+    container.style.bottom = '20px'
+    container.style.right = '20px'
+    container.style.width = '400px'
+    container.style.maxHeight = '200px'
+    container.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'
+    container.style.border = '1px solid #333'
+    container.style.borderRadius = '6px'
+    container.style.overflow = 'hidden'
+    container.style.zIndex = '999'
+    container.style.fontFamily = 'Consolas, Monaco, monospace'
+    container.style.fontSize = '12px'
+    container.style.color = '#0f0'
+
+    const header = document.createElement('div')
+    header.style.backgroundColor = '#222'
+    header.style.padding = '8px 12px'
+    header.style.borderBottom = '1px solid #333'
+    header.innerHTML = '<span style="color: #888;">▶</span> 日志输出'
+    container.appendChild(header)
+
+    const content = document.createElement('div')
+    content.id = 'loggerContent'
+    content.style.padding = '8px 12px'
+    content.style.height = 'calc(100% - 36px)'
+    content.style.overflowY = 'auto'
+    container.appendChild(content)
+
+    document.body.appendChild(container)
+
+    return {
+      log: function(message, type = 'info') {
+        const now = new Date()
+        const time = now.toLocaleTimeString()
+        const color = type === 'error' ? '#f44' : type === 'warn' ? '#fa0' : '#0f0'
+
+        const line = document.createElement('div')
+        line.style.marginBottom = '4px'
+        line.style.color = color
+        line.innerHTML = `<span style="color: #666;">[${time}]</span> ${message}`
+
+        content.appendChild(line)
+        content.scrollTop = content.scrollHeight
+      }
+    }
+  }
+
+  function createCoordPanel() {
+    const panel = document.createElement('div')
+    panel.id = 'coordPanel'
+    panel.style.position = 'fixed'
+    panel.style.top = '50px'
+    panel.style.right = '20px'
+    panel.style.width = '320px'
+    panel.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'
+    panel.style.border = '1px solid #333'
+    panel.style.borderRadius = '6px'
+    panel.style.overflow = 'hidden'
+    panel.style.zIndex = '999'
+    panel.style.fontFamily = 'Consolas, Monaco, monospace'
+    panel.style.fontSize = '12px'
+    panel.style.color = '#fff'
+
+    const header = document.createElement('div')
+    header.style.backgroundColor = '#222'
+    header.style.padding = '10px 12px'
+    header.style.borderBottom = '1px solid #333'
+    header.innerHTML = '<span style="color: #0f0;">📍</span> <span style="color: #fff;">坐标拾取</span>'
+    panel.appendChild(header)
+
+    const content = document.createElement('div')
+    content.style.padding = '12px'
+
+    const pickBtn = document.createElement('button')
+    pickBtn.id = 'pickCoordBtn'
+    pickBtn.textContent = '🖱️ 点击地图拾取坐标'
+    pickBtn.style.width = '100%'
+    pickBtn.style.padding = '10px'
+    pickBtn.style.marginBottom = '12px'
+    pickBtn.style.border = '1px solid #0a8'
+    pickBtn.style.borderRadius = '4px'
+    pickBtn.style.backgroundColor = 'rgba(0, 170, 136, 0.3)'
+    pickBtn.style.color = '#0f0'
+    pickBtn.style.cursor = 'pointer'
+    pickBtn.style.fontSize = '12px'
+    pickBtn.onclick = function() { startPickCoord() }
+    content.appendChild(pickBtn)
+
+    const typeDiv = document.createElement('div')
+    typeDiv.style.marginBottom = '12px'
+
+    const typeLabel = document.createElement('div')
+    typeLabel.style.color = '#888'
+    typeLabel.style.marginBottom = '6px'
+    typeLabel.textContent = '坐标格式:'
+    typeDiv.appendChild(typeLabel)
+
+    const typeOptions = [
+      { value: 'decimal', label: '十进制', id: 'rdoDecimal' },
+      { value: 'dms', label: '度分秒', id: 'rdoDms' },
+      { value: 'gk', label: '平面坐标', id: 'rdoGk' }
+    ]
+
+    typeOptions.forEach(function(opt, index) {
+      const label = document.createElement('label')
+      label.style.marginRight = '12px'
+      label.style.cursor = 'pointer'
+
+      const radio = document.createElement('input')
+      radio.type = 'radio'
+      radio.name = 'coordType'
+      radio.value = opt.value
+      radio.id = opt.id
+      radio.style.marginRight = '4px'
+      if (index === 0) radio.checked = true
+
+      label.appendChild(radio)
+      label.appendChild(document.createTextNode(opt.label))
+      typeDiv.appendChild(label)
+    })
+
+    content.appendChild(typeDiv)
+
+    const decimalDiv = document.createElement('div')
+    decimalDiv.id = 'decimalDiv'
+
+    const decimalRows = [
+      { label: '经度:', id: 'txtLng', readOnly: true },
+      { label: '纬度:', id: 'txtLat', readOnly: true },
+      { label: '高度:', id: 'txtAlt', readOnly: true }
+    ]
+
+    decimalRows.forEach(function(row) {
+      const rowDiv = document.createElement('div')
+      rowDiv.style.marginBottom = '8px'
+      rowDiv.style.display = 'flex'
+      rowDiv.style.alignItems = 'center'
+
+      const label = document.createElement('label')
+      label.style.width = '50px'
+      label.style.color = '#888'
+      label.textContent = row.label
+      rowDiv.appendChild(label)
+
+      const input = document.createElement('input')
+      input.id = row.id
+      input.type = 'text'
+      input.readOnly = true
+      input.style.flex = '1'
+      input.style.padding = '6px 8px'
+      input.style.border = '1px solid #444'
+      input.style.borderRadius = '4px'
+      input.style.backgroundColor = '#2a2a2a'
+      input.style.color = '#0f0'
+      input.style.fontSize = '12px'
+      rowDiv.appendChild(input)
+
+      decimalDiv.appendChild(rowDiv)
+    })
+
+    content.appendChild(decimalDiv)
+
+    const dmsDiv = document.createElement('div')
+    dmsDiv.id = 'dmsDiv'
+    dmsDiv.style.display = 'none'
+
+    const dmsRows = [
+      { label: '经度:', ids: ['txtLngDeg', 'txtLngMin', 'txtLngSec'] },
+      { label: '纬度:', ids: ['txtLatDeg', 'txtLatMin', 'txtLatSec'] }
+    ]
+
+    dmsRows.forEach(function(row) {
+      const rowDiv = document.createElement('div')
+      rowDiv.style.marginBottom = '8px'
+      rowDiv.style.display = 'flex'
+      rowDiv.style.alignItems = 'center'
+
+      const label = document.createElement('label')
+      label.style.width = '50px'
+      label.style.color = '#888'
+      label.textContent = row.label
+      rowDiv.appendChild(label)
+
+      row.ids.forEach(function(id, idx) {
+        const input = document.createElement('input')
+        input.id = id
+        input.type = 'text'
+        input.readOnly = true
+        input.style.width = idx === 2 ? '60px' : '45px'
+        input.style.padding = '6px 4px'
+        input.style.marginRight = '4px'
+        input.style.border = '1px solid #444'
+        input.style.borderRadius = '4px'
+        input.style.backgroundColor = '#2a2a2a'
+        input.style.color = '#0f0'
+        input.style.fontSize = '12px'
+        input.style.textAlign = 'center'
+        rowDiv.appendChild(input)
+
+        if (idx < 2) {
+          const span = document.createElement('span')
+          span.style.color = '#666'
+          span.style.marginRight = '4px'
+          span.textContent = idx === 0 ? '°' : '′'
+          rowDiv.appendChild(span)
+        } else {
+          const span = document.createElement('span')
+          span.style.color = '#666'
+          span.textContent = '″'
+          rowDiv.appendChild(span)
+        }
+      })
+
+      dmsDiv.appendChild(rowDiv)
+    })
+
+    content.appendChild(dmsDiv)
+
+    const gkDiv = document.createElement('div')
+    gkDiv.id = 'gkDiv'
+    gkDiv.style.display = 'none'
+
+    const gkZoneDiv = document.createElement('div')
+    gkZoneDiv.style.marginBottom = '8px'
+
+    const gkZoneLabel = document.createElement('label')
+    gkZoneLabel.style.marginRight = '12px'
+    gkZoneLabel.style.cursor = 'pointer'
+
+    const gkRadio3 = document.createElement('input')
+    gkRadio3.type = 'radio'
+    gkRadio3.name = 'gkZoneType'
+    gkRadio3.value = 'zone3'
+    gkRadio3.checked = true
+    gkRadio3.style.marginRight = '4px'
+    gkZoneLabel.appendChild(gkRadio3)
+    gkZoneLabel.appendChild(document.createTextNode('3度带'))
+    gkZoneDiv.appendChild(gkZoneLabel)
+
+    const gkZoneLabel2 = document.createElement('label')
+    gkZoneLabel2.style.cursor = 'pointer'
+
+    const gkRadio6 = document.createElement('input')
+    gkRadio6.type = 'radio'
+    gkRadio6.name = 'gkZoneType'
+    gkRadio6.value = 'zone6'
+    gkRadio6.style.marginRight = '4px'
+    gkZoneLabel2.appendChild(gkRadio6)
+    gkZoneLabel2.appendChild(document.createTextNode('6度带'))
+    gkZoneDiv.appendChild(gkZoneLabel2)
+
+    gkDiv.appendChild(gkZoneDiv)
+
+    const gkRows = [
+      { label: 'X:', id: 'txtGkX' },
+      { label: 'Y:', id: 'txtGkY' }
+    ]
+
+    gkRows.forEach(function(row) {
+      const rowDiv = document.createElement('div')
+      rowDiv.style.marginBottom = '8px'
+      rowDiv.style.display = 'flex'
+      rowDiv.style.alignItems = 'center'
+
+      const label = document.createElement('label')
+      label.style.width = '50px'
+      label.style.color = '#888'
+      label.textContent = row.label
+      rowDiv.appendChild(label)
+
+      const input = document.createElement('input')
+      input.id = row.id
+      input.type = 'text'
+      input.readOnly = true
+      input.style.flex = '1'
+      input.style.padding = '6px 8px'
+      input.style.border = '1px solid #444'
+      input.style.borderRadius = '4px'
+      input.style.backgroundColor = '#2a2a2a'
+      input.style.color = '#0f0'
+      input.style.fontSize = '12px'
+      rowDiv.appendChild(input)
+
+      gkDiv.appendChild(rowDiv)
+    })
+
+    content.appendChild(gkDiv)
+
+    panel.appendChild(content)
+    document.body.appendChild(panel)
+
+    document.querySelectorAll('input[name="coordType"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        coordOptions.coordType = this.value
+        updateCoordDisplay()
+      })
+    })
+
+    document.querySelectorAll('input[name="gkZoneType"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        coordOptions.gkZoneType = this.value
+        updateCoordDisplay()
+      })
+    })
+  }
+
+  function startPickCoord() {
+    if (!map) return
+
+    map.setCursor(true)
+    map.off(mars3d.EventType.click, onMapClick)
+    map.once(mars3d.EventType.click, onMapClick)
+    logger.log('请点击地图选择位置...')
+  }
+
+  function onMapClick(event) {
+    map.setCursor(false)
+
+    const cartesian = event.cartesian
+    const point = mars3d.LngLatPoint.fromCartesian(cartesian)
+
+    currentCoord.lng = point.lng
+    currentCoord.lat = point.lat
+    currentCoord.alt = point.alt || 0
+
+    updateMarker(currentCoord.lng, currentCoord.lat, currentCoord.alt)
+    updateCoordDisplay()
+
+    logger.log('已拾取坐标: ' + currentCoord.lng.toFixed(6) + ', ' + currentCoord.lat.toFixed(6))
+  }
+
+  function updateMarker(lng, lat, alt) {
+    const position = [lng, lat, alt]
+
+    if (pointEntity == null) {
+      pointEntity = new mars3d.graphic.PointEntity({
+        position: position,
+        style: {
+          color: '#3388ff',
+          pixelSize: 10,
+          outlineColor: '#ffffff',
+          outlineWidth: 2
+        }
+      })
+      map.graphicLayer.addGraphic(pointEntity)
+    } else {
+      pointEntity.position = position
+    }
+  }
+
+  function degreeToDms(degree) {
+    const sign = degree < 0 ? -1 : 1
+    const abs = Math.abs(degree)
+    const d = Math.floor(abs)
+    const m = Math.floor((abs - d) * 60)
+    const s = ((abs - d) * 60 - m) * 60
+    return { degree: d * sign, minute: m, second: s.toFixed(3) }
+  }
+
+  function updateCoordDisplay() {
+    document.getElementById('decimalDiv').style.display = coordOptions.coordType === 'decimal' ? 'block' : 'none'
+    document.getElementById('dmsDiv').style.display = coordOptions.coordType === 'dms' ? 'block' : 'none'
+    document.getElementById('gkDiv').style.display = coordOptions.coordType === 'gk' ? 'block' : 'none'
+
+    document.getElementById('txtLng').value = currentCoord.lng.toFixed(6)
+    document.getElementById('txtLat').value = currentCoord.lat.toFixed(6)
+    document.getElementById('txtAlt').value = currentCoord.alt.toFixed(1)
+
+    const lngDms = degreeToDms(currentCoord.lng)
+    const latDms = degreeToDms(currentCoord.lat)
+
+    document.getElementById('txtLngDeg').value = lngDms.degree
+    document.getElementById('txtLngMin').value = lngDms.minute
+    document.getElementById('txtLngSec').value = lngDms.second
+    document.getElementById('txtLatDeg').value = latDms.degree
+    document.getElementById('txtLatMin').value = latDms.minute
+    document.getElementById('txtLatSec').value = latDms.second
+
+    let gkResult
+    if (coordOptions.gkZoneType === 'zone3') {
+      gkResult = mars3d.PointTrans.proj4Trans(
+        [currentCoord.lng, currentCoord.lat],
+        mars3d.CRS.EPSG4326,
+        mars3d.CRS.CGCS2000_GK_Zone_3
+      )
+    } else {
+      gkResult = mars3d.PointTrans.proj4Trans(
+        [currentCoord.lng, currentCoord.lat],
+        mars3d.CRS.EPSG4326,
+        mars3d.CRS.CGCS2000_GK_Zone_6
+      )
+    }
+
+    document.getElementById('txtGkX').value = gkResult[0].toFixed(3)
+    document.getElementById('txtGkY').value = gkResult[1].toFixed(3)
+  }
+
+  function initMap() {
+    map = new mars3d.Map('map3dContainer', {
+      scene: {
+        center: { lat: 34.265, lng: 108.954, alt: 8000, heading: 0, pitch: -45 },
+        fxaa: true
+      },
+      control: {
+        baseLayerPicker: true,
+        homeButton: true,
+        sceneModePicker: true,
+        navigationHelpButton: true,
+        fullscreenButton: true,
+        contextmenu: { hasDefault: true },
+      },
+      terrain: {
+        url: 'https://data.mars3d.cn/terrain',
+        show: true,
+      },
+      basemaps: [
+        {
+          name: '天地图影像',
+          icon: 'https://data.mars3d.cn/img/thumbnail/basemap/tdt_img.png',
+          type: 'tdt',
+          layer: 'img_d',
+          show: true,
+        },
+      ],
+    })
+
+    createCoordPanel()
+    logger = createLogger()
+
+    logger.log('mars3d 地图初始化完成')
+    logger.log('请点击"拾取坐标"按钮选择位置')
+
+    updateCoordDisplay()
+
+    return map
+  }
+
+  initMap()
+</script>
+<style>
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(270deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+  }
+
+  #map3dContainer {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<!-- Settings Section -->
+<settings>
+  <head-metadata> </head-metadata>
+  <css-links>
+  </css-links>
+  <js-links>
+  </js-links>
+</settings>

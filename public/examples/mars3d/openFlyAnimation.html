@@ -1,0 +1,280 @@
+<!-- CodeSandbox Template File -->
+<engine-type>mars3d</engine-type>
+<title>开场动画</title>
+<meta name="description" content="Mars3D 开场动画示例" />
+<template>
+  <div id="map3dContainer"></div>
+</template>
+<script>
+  let map
+  let gui
+  let logger
+  let flyAnimationOptions = {
+    start: { lat: 34.265, lng: 108.954, alt: 800000, heading: 0, pitch: -45 },
+    end: { lat: 34.265, lng: 108.954, alt: 8000, heading: 30, pitch: -30 },
+    duration: 8,
+    easing: 'easeInOut',
+    autoStart: true
+  }
+
+  function createLogger() {
+    const container = document.createElement('div')
+    container.id = 'loggerContainer'
+    container.style.position = 'fixed'
+    container.style.bottom = '20px'
+    container.style.right = '20px'
+    container.style.width = '400px'
+    container.style.maxHeight = '200px'
+    container.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'
+    container.style.border = '1px solid #333'
+    container.style.borderRadius = '6px'
+    container.style.overflow = 'hidden'
+    container.style.zIndex = '999'
+    container.style.fontFamily = 'Consolas, Monaco, monospace'
+    container.style.fontSize = '12px'
+    container.style.color = '#0f0'
+
+    const header = document.createElement('div')
+    header.style.backgroundColor = '#222'
+    header.style.padding = '8px 12px'
+    header.style.borderBottom = '1px solid #333'
+    header.innerHTML = '<span style="color: #888;">▶</span> 日志输出'
+    container.appendChild(header)
+
+    const content = document.createElement('div')
+    content.id = 'loggerContent'
+    content.style.padding = '8px 12px'
+    content.style.height = 'calc(100% - 36px)'
+    content.style.overflowY = 'auto'
+    container.appendChild(content)
+
+    document.body.appendChild(container)
+
+    return {
+      log: function(message, type = 'info') {
+        const now = new Date()
+        const time = now.toLocaleTimeString()
+        const color = type === 'error' ? '#f44' : type === 'warn' ? '#fa0' : '#0f0'
+        
+        const line = document.createElement('div')
+        line.style.marginBottom = '4px'
+        line.style.color = color
+        line.innerHTML = `<span style="color: #666;">[${time}]</span> ${message}`
+        
+        content.appendChild(line)
+        content.scrollTop = content.scrollHeight
+      }
+    }
+  }
+
+  function createGUI() {
+    const gui = new dat.GUI({ autoPlace: false })
+    gui.domElement.id = 'guiContainer'
+    gui.domElement.style.position = 'fixed'
+    gui.domElement.style.top = '50px'
+    gui.domElement.style.right = '20px'
+    gui.domElement.style.zIndex = '999'
+    document.body.appendChild(gui.domElement)
+
+    const startFolder = gui.addFolder('起点坐标')
+    startFolder.add(flyAnimationOptions.start, 'lat', -90, 90).name('纬度')
+    startFolder.add(flyAnimationOptions.start, 'lng', -180, 180).name('经度')
+    startFolder.add(flyAnimationOptions.start, 'alt', 1, 50000000).name('高度')
+    startFolder.add(flyAnimationOptions.start, 'heading', -180, 180).name('方位角')
+    startFolder.add(flyAnimationOptions.start, 'pitch', -90, 90).name('俯仰角')
+
+    const endFolder = gui.addFolder('终点坐标')
+    endFolder.add(flyAnimationOptions.end, 'lat', -90, 90).name('纬度')
+    endFolder.add(flyAnimationOptions.end, 'lng', -180, 180).name('经度')
+    endFolder.add(flyAnimationOptions.end, 'alt', 1, 50000000).name('高度')
+    endFolder.add(flyAnimationOptions.end, 'heading', -180, 180).name('方位角')
+    endFolder.add(flyAnimationOptions.end, 'pitch', -90, 90).name('俯仰角')
+
+    const settingsFolder = gui.addFolder('动画设置')
+    settingsFolder.add(flyAnimationOptions, 'duration', 1, 30).name('持续时间(秒)')
+    settingsFolder.add(flyAnimationOptions, 'easing', ['linear', 'easeIn', 'easeOut', 'easeInOut']).name('缓动函数')
+
+    const actionsFolder = gui.addFolder('操作')
+    actionsFolder.add({ play: function() { startFlyAnimation() } }, 'play').name('播放动画')
+    actionsFolder.add({ stop: function() { 
+      if (map && map.camera) {
+        map.camera.cancelFlight()
+        logger.log('动画已停止')
+      }
+    } }, 'stop').name('停止动画')
+    actionsFolder.add({ flyToStart: function() { map.setCameraView(flyAnimationOptions.start) } }, 'flyToStart').name('飞到起点')
+    actionsFolder.add({ flyToEnd: function() { map.setCameraView(flyAnimationOptions.end) } }, 'flyToEnd').name('飞到终点')
+    actionsFolder.add({ getCurrent: function() { 
+      const view = map.getCameraView()
+      logger.log(`当前视角: lat=${view.lat.toFixed(6)}, lng=${view.lng.toFixed(6)}, alt=${Math.round(view.alt)}, heading=${view.heading.toFixed(2)}, pitch=${view.pitch.toFixed(2)}`)
+    } }, 'getCurrent').name('获取当前视角')
+
+    return gui
+  }
+
+  let isFlying = false
+  let currentFlyController = null
+
+  function startFlyAnimation() {
+    if (!map || !map.camera) return
+    
+    if (currentFlyController) {
+      currentFlyController.cancel = true
+    }
+    
+    logger.log('开始播放开场动画...')
+    isFlying = true
+    
+    const startPosition = Cesium.Cartesian3.fromDegrees(
+      flyAnimationOptions.start.lng,
+      flyAnimationOptions.start.lat,
+      flyAnimationOptions.start.alt
+    )
+    
+    const endPosition = Cesium.Cartesian3.fromDegrees(
+      flyAnimationOptions.end.lng,
+      flyAnimationOptions.end.lat,
+      flyAnimationOptions.end.alt
+    )
+
+    const startHeadingPitchRoll = new Cesium.HeadingPitchRoll(
+      Cesium.Math.toRadians(flyAnimationOptions.start.heading),
+      Cesium.Math.toRadians(flyAnimationOptions.start.pitch),
+      0
+    )
+
+    const endHeadingPitchRoll = new Cesium.HeadingPitchRoll(
+      Cesium.Math.toRadians(flyAnimationOptions.end.heading),
+      Cesium.Math.toRadians(flyAnimationOptions.end.pitch),
+      0
+    )
+
+    const flyToController = {
+      duration: flyAnimationOptions.duration,
+      easing: Cesium.EasingFunction[flyAnimationOptions.easing.toUpperCase() + '_EASE'],
+      complete: function() {
+        isFlying = false
+        logger.log('开场动画播放完成')
+      },
+      cancel: false
+    }
+    currentFlyController = flyToController
+
+    map.camera.flyTo({
+      destination: startPosition,
+      orientation: {
+        heading: startHeadingPitchRoll.heading,
+        pitch: startHeadingPitchRoll.pitch,
+        roll: startHeadingPitchRoll.roll
+      },
+      duration: 0.01,
+      complete: function() {
+        if (flyToController.cancel) return
+        
+        map.camera.flyTo({
+          destination: endPosition,
+          orientation: {
+            heading: endHeadingPitchRoll.heading,
+            pitch: endHeadingPitchRoll.pitch,
+            roll: endHeadingPitchRoll.roll
+          },
+          duration: flyAnimationOptions.duration,
+          easing: Cesium.EasingFunction[flyAnimationOptions.easing.toUpperCase() + '_EASE']
+        })
+      }
+    })
+
+    setTimeout(function() {
+      if (!flyToController.cancel) {
+        flyToController.complete()
+      }
+    }, flyAnimationOptions.duration * 1000 + 100)
+  }
+
+  function initMap() {
+    map = new mars3d.Map('map3dContainer', {
+      scene: {
+        center: flyAnimationOptions.start,
+        showSun: true,
+        showMoon: true,
+        showSkyBox: true,
+        showSkyAtmosphere: false,
+        fog: true,
+        fxaa: true,
+        globe: {
+          showGroundAtmosphere: false,
+          depthTestAgainstTerrain: false,
+          baseColor: '#546a53',
+        },
+        cameraController: {
+          zoomFactor: 3.0,
+          minimumZoomDistance: 1,
+          maximumZoomDistance: 50000000,
+          enableRotate: true,
+          enableZoom: true,
+        },
+      },
+      control: {
+        baseLayerPicker: true,
+        homeButton: true,
+        sceneModePicker: true,
+        navigationHelpButton: true,
+        fullscreenButton: true,
+        contextmenu: { hasDefault: true },
+      },
+      terrain: {
+        url: 'https://data.mars3d.cn/terrain',
+        show: true,
+      },
+      basemaps: [
+        {
+          name: '天地图影像',
+          icon: 'https://data.mars3d.cn/img/thumbnail/basemap/tdt_img.png',
+          type: 'tdt',
+          layer: 'img_d',
+          show: true,
+        },
+      ],
+    })
+
+    logger = createLogger()
+    gui = createGUI()
+
+    logger.log('mars3d 地图初始化完成')
+    
+    if (flyAnimationOptions.autoStart) {
+      setTimeout(startFlyAnimation, 500)
+    }
+
+    return map
+  }
+
+  initMap()
+</script>
+<style>
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(270deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+  }
+
+  #map3dContainer {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<!-- Settings Section -->
+<settings>
+  <head-metadata> </head-metadata>
+  <css-links>
+    ../../libs/utils/dat.gui-0.7.9/dat.gui.css
+  </css-links>
+  <js-links>
+    ../../libs/utils/dat.gui-0.7.9/dat.gui.min.js
+  </js-links>
+</settings>

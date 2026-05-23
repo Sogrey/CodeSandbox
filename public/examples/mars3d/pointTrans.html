@@ -1,0 +1,412 @@
+<!--
+CodeSandbox 分享文件
+生成时间: 2026/5/23 09:05:21
+页面标题: 坐标批量转换
+原始页面链接: http://localhost:5173/CodeSandbox/
+-->
+
+<!-- CodeSandbox Template File -->
+<!-- 该文件包含完整的模板数据和设置信息，可以被重新导入 -->
+<engine-type>mars3d</engine-type>
+<title>坐标批量转换</title>
+<meta name="description" content="Mars3D 多种坐标系批量转换示例" />
+<template>
+<div id="map3dContainer"></div>
+</template>
+<script>
+let map
+let logger
+
+function createLogger() {
+  const container = document.createElement('div')
+  container.id = 'loggerContainer'
+  container.style.position = 'fixed'
+  container.style.bottom = '20px'
+  container.style.right = '20px'
+  container.style.width = '400px'
+  container.style.maxHeight = '200px'
+  container.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'
+  container.style.border = '1px solid #333'
+  container.style.borderRadius = '6px'
+  container.style.overflow = 'hidden'
+  container.style.zIndex = '999'
+  container.style.fontFamily = 'Consolas, Monaco, monospace'
+  container.style.fontSize = '12px'
+  container.style.color = '#0f0'
+
+  const header = document.createElement('div')
+  header.style.backgroundColor = '#222'
+  header.style.padding = '8px 12px'
+  header.style.borderBottom = '1px solid #333'
+  header.innerHTML = '<span style="color: #888;">▶</span> 日志输出'
+  container.appendChild(header)
+
+  const content = document.createElement('div')
+  content.id = 'loggerContent'
+  content.style.padding = '8px 12px'
+  content.style.height = 'calc(100% - 36px)'
+  content.style.overflowY = 'auto'
+  container.appendChild(content)
+
+  document.body.appendChild(container)
+
+  return {
+    log: function(message, type = 'info') {
+      const now = new Date()
+      const time = now.toLocaleTimeString()
+      const color = type === 'error' ? '#f44' : type === 'warn' ? '#fa0' : '#0f0'
+
+      const line = document.createElement('div')
+      line.style.marginBottom = '4px'
+      line.style.color = color
+      line.innerHTML = `<span style="color: #666;">[${time}]</span> ${message}`
+
+      content.appendChild(line)
+      content.scrollTop = content.scrollHeight
+    }
+  }
+}
+
+function createPanel() {
+  const panel = document.createElement('div')
+  panel.id = 'transPanel'
+  panel.style.position = 'fixed'
+  panel.style.top = '50px'
+  panel.style.right = '20px'
+  panel.style.width = '360px'
+  panel.style.maxHeight = 'calc(100% - 120px)'
+  panel.style.backgroundColor = 'rgba(0, 0, 0, 0.9)'
+  panel.style.border = '1px solid #333'
+  panel.style.borderRadius = '6px'
+  panel.style.overflow = 'hidden'
+  panel.style.zIndex = '999'
+  panel.style.fontFamily = 'Consolas, Monaco, monospace'
+  panel.style.fontSize = '12px'
+  panel.style.color = '#fff'
+  panel.style.display = 'flex'
+  panel.style.flexDirection = 'column'
+
+  const header = document.createElement('div')
+  header.style.backgroundColor = '#222'
+  header.style.padding = '10px 12px'
+  header.style.borderBottom = '1px solid #333'
+  header.innerHTML = '<span style="color: #0f0;">🔄</span> <span style="color: #fff;">坐标批量转换</span>'
+  panel.appendChild(header)
+
+  const content = document.createElement('div')
+  content.style.padding = '12px'
+  content.style.overflowY = 'auto'
+  content.style.flex = '1'
+
+  const sourceLabel = document.createElement('div')
+  sourceLabel.style.color = '#888'
+  sourceLabel.style.marginBottom = '6px'
+  sourceLabel.textContent = '源坐标系:'
+  content.appendChild(sourceLabel)
+
+  const sourceSelect = document.createElement('select')
+  sourceSelect.id = 'sourceCrs'
+  sourceSelect.style.width = '100%'
+  sourceSelect.style.padding = '8px'
+  sourceSelect.style.marginBottom = '12px'
+  sourceSelect.style.border = '1px solid #444'
+  sourceSelect.style.borderRadius = '4px'
+  sourceSelect.style.backgroundColor = '#2a2a2a'
+  sourceSelect.style.color = '#fff'
+  sourceSelect.style.fontSize = '12px'
+
+  const crsOptions = [{
+      value: 'WGS84',
+      label: 'WGS84 (经纬度)'
+    },
+    {
+      value: 'GCJ02',
+      label: 'GCJ02 (国测局)'
+    },
+    {
+      value: 'BD09',
+      label: 'BD09 (百度)'
+    },
+    {
+      value: 'Mercator',
+      label: 'WebMercator (墨卡托)'
+    },
+    {
+      value: 'CGCS2000_3',
+      label: 'CGCS2000 3度带'
+    },
+    {
+      value: 'CGCS2000_6',
+      label: 'CGCS2000 6度带'
+    }
+  ]
+
+  crsOptions.forEach(function(opt) {
+    const option = document.createElement('option')
+    option.value = opt.value
+    option.textContent = opt.label
+    sourceSelect.appendChild(option)
+  })
+  content.appendChild(sourceSelect)
+
+  const inputLabel = document.createElement('div')
+  inputLabel.style.color = '#888'
+  inputLabel.style.marginBottom = '6px'
+  inputLabel.textContent = '输入坐标 (每行一组，逗号分隔):'
+  content.appendChild(inputLabel)
+
+  const inputTextarea = document.createElement('textarea')
+  inputTextarea.id = 'inputCoords'
+  inputTextarea.placeholder = '例如:\n108.954, 34.265\n117.225, 31.832'
+  inputTextarea.style.width = '94%'
+  inputTextarea.style.height = '80px'
+  inputTextarea.style.padding = '8px'
+  inputTextarea.style.marginBottom = '12px'
+  inputTextarea.style.border = '1px solid #444'
+  inputTextarea.style.borderRadius = '4px'
+  inputTextarea.style.backgroundColor = '#2a2a2a'
+  inputTextarea.style.color = '#0f0'
+  inputTextarea.style.fontSize = '12px'
+  inputTextarea.style.fontFamily = 'Consolas, Monaco, monospace'
+  inputTextarea.style.resize = 'vertical'
+  content.appendChild(inputTextarea)
+
+  const convertBtn = document.createElement('button')
+  convertBtn.textContent = '🔄 转换为所有坐标系'
+  convertBtn.style.width = '100%'
+  convertBtn.style.padding = '10px'
+  convertBtn.style.marginBottom = '12px'
+  convertBtn.style.border = '1px solid #0a8'
+  convertBtn.style.borderRadius = '4px'
+  convertBtn.style.backgroundColor = 'rgba(0, 170, 136, 0.3)'
+  convertBtn.style.color = '#0f0'
+  convertBtn.style.cursor = 'pointer'
+  convertBtn.style.fontSize = '12px'
+  convertBtn.onclick = function() {
+    performConversion()
+  }
+  content.appendChild(convertBtn)
+
+  const resultLabel = document.createElement('div')
+  resultLabel.style.color = '#888'
+  resultLabel.style.marginBottom = '6px'
+  resultLabel.textContent = '转换结果:'
+  content.appendChild(resultLabel)
+
+  const resultDiv = document.createElement('div')
+  resultDiv.id = 'resultDiv'
+  resultDiv.style.maxHeight = '200px'
+  resultDiv.style.overflowY = 'auto'
+  resultDiv.style.backgroundColor = '#1a1a1a'
+  resultDiv.style.border = '1px solid #333'
+  resultDiv.style.borderRadius = '4px'
+  resultDiv.style.padding = '8px'
+  resultDiv.style.color = '#0f0'
+  resultDiv.style.fontSize = '11px'
+  resultDiv.style.whiteSpace = 'pre-wrap'
+  resultDiv.textContent = '等待转换...'
+  content.appendChild(resultDiv)
+
+  panel.appendChild(content)
+  document.body.appendChild(panel)
+}
+
+function parseInputCoords() {
+  const input = document.getElementById('inputCoords').value.trim()
+  if (!input) return []
+
+  const lines = input.split('\n')
+  const coords = []
+
+  lines.forEach(function(line) {
+    line = line.trim()
+    if (!line) return
+
+    const parts = line.split(/[,，\s]+/)
+    if (parts.length >= 2) {
+      const x = parseFloat(parts[0])
+      const y = parseFloat(parts[1])
+      if (!isNaN(x) && !isNaN(y)) {
+        coords.push([x, y])
+      }
+    }
+  })
+
+  return coords
+}
+
+function performConversion() {
+  const coords = parseInputCoords()
+  const sourceCrs = document.getElementById('sourceCrs').value
+  const resultDiv = document.getElementById('resultDiv')
+
+  if (coords.length === 0) {
+    resultDiv.textContent = '请输入有效的坐标数据!'
+    resultDiv.style.color = '#f44'
+    logger.log('坐标输入无效', 'error')
+    return
+  }
+
+  resultDiv.style.color = '#0f0'
+  let result = ''
+
+  coords.forEach(function(coord, index) {
+    const [x, y] = coord
+
+    result += '━━━ 坐标 ' + (index + 1) + ' ━━━\n'
+    result += '源: [' + x.toFixed(6) + ', ' + y.toFixed(6) + ']\n\n'
+
+    let wgs84, gcj02, bd09, mercator, cgcs2000_3, cgcs2000_6
+
+    try {
+      switch (sourceCrs) {
+        case 'WGS84':
+          wgs84 = [x, y]
+          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
+          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
+          mercator = mars3d.PointTrans.lonlat2mercator(wgs84)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'GCJ02':
+          gcj02 = [x, y]
+          wgs84 = mars3d.PointTrans.gcj2wgs(gcj02)
+          bd09 = mars3d.PointTrans.gcj2bd(gcj02)
+          mercator = mars3d.PointTrans.lonlat2mercator(gcj02)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'BD09':
+          bd09 = [x, y]
+          gcj02 = mars3d.PointTrans.bd2gcj(bd09)
+          wgs84 = mars3d.PointTrans.bd2wgs(bd09)
+          mercator = mars3d.PointTrans.lonlat2mercator(gcj02)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'Mercator':
+          mercator = [x, y]
+          const lonlat = mars3d.PointTrans.mercator2lonlat(mercator)
+          wgs84 = lonlat
+          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
+          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'CGCS2000_3':
+          cgcs2000_3 = [x, y]
+          wgs84 = mars3d.PointTrans.proj4Trans(cgcs2000_3, mars3d.CRS.CGCS2000_GK_Zone_3, mars3d.CRS.EPSG4326)
+          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
+          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
+          mercator = mars3d.PointTrans.lonlat2mercator(wgs84)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'CGCS2000_6':
+          cgcs2000_6 = [x, y]
+          wgs84 = mars3d.PointTrans.proj4Trans(cgcs2000_6, mars3d.CRS.CGCS2000_GK_Zone_6, mars3d.CRS.EPSG4326)
+          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
+          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
+          mercator = mars3d.PointTrans.lonlat2mercator(wgs84)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          break
+      }
+
+      result += 'WGS84:      [' + wgs84[0].toFixed(6) + ', ' + wgs84[1].toFixed(6) + ']\n'
+      result += 'GCJ02:      [' + gcj02[0].toFixed(6) + ', ' + gcj02[1].toFixed(6) + ']\n'
+      result += 'BD09:       [' + bd09[0].toFixed(6) + ', ' + bd09[1].toFixed(6) + ']\n'
+      result += 'Mercator:   [' + mercator[0].toFixed(2) + ', ' + mercator[1].toFixed(2) + ']\n'
+      result += 'CGCS2000_3: [' + cgcs2000_3[0].toFixed(2) + ', ' + cgcs2000_3[1].toFixed(2) + ']\n'
+      result += 'CGCS2000_6: [' + cgcs2000_6[0].toFixed(2) + ', ' + cgcs2000_6[1].toFixed(2) + ']\n'
+
+    } catch (e) {
+      result += '转换失败: ' + e.message + '\n'
+    }
+
+    result += '\n'
+  })
+
+  resultDiv.textContent = result
+  logger.log('成功转换 ' + coords.length + ' 组坐标')
+}
+
+function initMap() {
+  map = new mars3d.Map('map3dContainer', {
+    scene: {
+      center: {
+        lat: 34.265,
+        lng: 108.954,
+        alt: 800000,
+        heading: 0,
+        pitch: -90
+      }
+    },
+    control: {
+      baseLayerPicker: true,
+      homeButton: true,
+      sceneModePicker: true,
+      navigationHelpButton: true,
+      fullscreenButton: true,
+      contextmenu: {
+        hasDefault: true
+      },
+    },
+    basemaps: [{
+      name: '天地图影像',
+      icon: 'https://data.mars3d.cn/img/thumbnail/basemap/tdt_img.png',
+      type: 'tdt',
+      layer: 'img_d',
+      show: true,
+    }, ],
+  })
+
+  createPanel()
+  logger = createLogger()
+
+  logger.log('mars3d 地图初始化完成')
+  logger.log('坐标转换工具已就绪')
+
+  document.getElementById('inputCoords').value = '108.954, 34.265\n117.225, 31.832'
+
+  return map
+}
+
+initMap()
+</script>
+<style>
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(270deg, #667eea 0%, #764ba2 100%);
+  color: #333;
+}
+
+#map3dContainer {
+  width: 100%;
+  height: 100%;
+}
+
+select option {
+  background-color: #2a2a2a;
+}
+</style>
+
+<!-- Settings Section - 设置数据，将被自动解析 -->
+<settings>
+<head-metadata>
+
+</head-metadata>
+<css-links>
+
+</css-links>
+<js-links>
+
+</js-links>
+</settings>

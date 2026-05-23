@@ -1,0 +1,243 @@
+<!-- CodeSandbox Template File -->
+<engine-type>mars3d</engine-type>
+<title>视点飞行</title>
+<meta name="description" content="Mars3D 多视点顺序飞行示例" />
+<template>
+  <div id="map3dContainer"></div>
+</template>
+<script>
+  let map
+  let gui
+  let logger
+  let isPlaying = false
+  let currentStep = 0
+
+  let viewOptions = {
+    autoStart: true,
+    stepDuration: 6,
+    easing: 'easeInOut'
+  }
+
+  let viewPoints = [
+    { lng: 108.961601, lat: 34.217109, alt: 509.2, heading: 314.5, pitch: -22.5, name: '视点1-大雁塔南侧' },
+    { lng: 108.96164, lat: 34.222159, alt: 510.3, heading: 211.2, pitch: -22.5, name: '视点2-大雁塔北侧' },
+    { lng: 108.957259, lat: 34.221967, alt: 494.3, heading: 127.5, pitch: -17.2, name: '视点3-大雁塔西侧' },
+    { lng: 108.957319, lat: 34.217225, alt: 515.5, heading: 25.4, pitch: -25.3, name: '视点4-大雁塔东侧' }
+  ]
+
+  function createLogger() {
+    const container = document.createElement('div')
+    container.id = 'loggerContainer'
+    container.style.position = 'fixed'
+    container.style.bottom = '20px'
+    container.style.right = '20px'
+    container.style.width = '400px'
+    container.style.maxHeight = '200px'
+    container.style.backgroundColor = 'rgba(0, 0, 0, 0.85)'
+    container.style.border = '1px solid #333'
+    container.style.borderRadius = '6px'
+    container.style.overflow = 'hidden'
+    container.style.zIndex = '999'
+    container.style.fontFamily = 'Consolas, Monaco, monospace'
+    container.style.fontSize = '12px'
+    container.style.color = '#0f0'
+
+    const header = document.createElement('div')
+    header.style.backgroundColor = '#222'
+    header.style.padding = '8px 12px'
+    header.style.borderBottom = '1px solid #333'
+    header.innerHTML = '<span style="color: #888;">▶</span> 日志输出'
+    container.appendChild(header)
+
+    const content = document.createElement('div')
+    content.id = 'loggerContent'
+    content.style.padding = '8px 12px'
+    content.style.height = 'calc(100% - 36px)'
+    content.style.overflowY = 'auto'
+    container.appendChild(content)
+
+    document.body.appendChild(container)
+
+    return {
+      log: function(message, type = 'info') {
+        const now = new Date()
+        const time = now.toLocaleTimeString()
+        const color = type === 'error' ? '#f44' : type === 'warn' ? '#fa0' : '#0f0'
+
+        const line = document.createElement('div')
+        line.style.marginBottom = '4px'
+        line.style.color = color
+        line.innerHTML = `<span style="color: #666;">[${time}]</span> ${message}`
+
+        content.appendChild(line)
+        content.scrollTop = content.scrollHeight
+      }
+    }
+  }
+
+  function createGUI() {
+    const gui = new dat.GUI({ autoPlace: false })
+    gui.domElement.id = 'guiContainer'
+    gui.domElement.style.position = 'fixed'
+    gui.domElement.style.top = '50px'
+    gui.domElement.style.right = '20px'
+    gui.domElement.style.zIndex = '999'
+    document.body.appendChild(gui.domElement)
+
+    const settingsFolder = gui.addFolder('飞行设置')
+    settingsFolder.add(viewOptions, 'autoStart').name('自动开始')
+    settingsFolder.add(viewOptions, 'stepDuration', 1, 15).name('每步时长(秒)')
+    settingsFolder.add(viewOptions, 'easing', ['linear', 'easeIn', 'easeOut', 'easeInOut']).name('缓动函数')
+
+    const actionsFolder = gui.addFolder('操作')
+    actionsFolder.add({ play: function() { playViewList() } }, 'play').name('开始飞行')
+    actionsFolder.add({ pause: function() { pauseViewList() } }, 'pause').name('暂停飞行')
+    actionsFolder.add({ proceed: function() { proceedViewList() } }, 'proceed').name('继续飞行')
+    actionsFolder.add({ stop: function() { stopViewList() } }, 'stop').name('停止飞行')
+
+    settingsFolder.open()
+
+    return gui
+  }
+
+  function getViewPointsWithDuration() {
+    return viewPoints.map(function(point) {
+      return {
+        lng: point.lng,
+        lat: point.lat,
+        alt: point.alt,
+        heading: point.heading,
+        pitch: point.pitch,
+        duration: viewOptions.stepDuration,
+        stop: 0
+      }
+    })
+  }
+
+  let currentViewIndex = 0
+
+  function playViewList() {
+    if (!map) return
+
+    stopViewList()
+    isPlaying = true
+    currentViewIndex = 0
+
+    logger.log('开始视点飞行...')
+    logger.log('飞向: ' + viewPoints[currentViewIndex].name)
+
+    map.setCameraViewList(getViewPointsWithDuration(), {
+      easing: Cesium.EasingFunction[viewOptions.easing.toUpperCase() + '_EASE'],
+      complete: function() {
+        isPlaying = false
+        logger.log('视点飞行完成')
+      },
+      each: function(index) {
+        currentViewIndex = index
+        if (index < viewPoints.length) {
+          logger.log('飞向: ' + viewPoints[index].name)
+        }
+      }
+    })
+  }
+
+  function pauseViewList() {
+    if (!map) return
+    map.pauseCameraViewList()
+    isPlaying = false
+    logger.log('飞行已暂停')
+  }
+
+  function proceedViewList() {
+    if (!map) return
+    map.proceedCameraViewList()
+    isPlaying = true
+    logger.log('飞行继续中...')
+  }
+
+  function stopViewList() {
+    if (!map || !map.camera) return
+    map.camera.cancelFlight()
+    isPlaying = false
+    currentViewIndex = 0
+    logger.log('飞行已停止')
+  }
+
+  function initMap() {
+    map = new mars3d.Map('map3dContainer', {
+      scene: {
+        center: { lng: 108.96, lat: 34.22, alt: 2000, heading: 0, pitch: -45 }
+      },
+      control: {
+        baseLayerPicker: true,
+        homeButton: true,
+        sceneModePicker: true,
+        navigationHelpButton: true,
+        fullscreenButton: true,
+        contextmenu: { hasDefault: true },
+      },
+      terrain: {
+        url: 'https://data.mars3d.cn/terrain',
+        show: true,
+      },
+      basemaps: [
+        {
+          name: '天地图影像',
+          icon: 'https://data.mars3d.cn/img/thumbnail/basemap/tdt_img.png',
+          type: 'tdt',
+          layer: 'img_d',
+          show: true,
+        },
+      ],
+    })
+
+    var tiles3dLayer = new mars3d.layer.TilesetLayer({
+      name: '大雁塔',
+      url: 'https://data.mars3d.cn/3dtiles/qx-dyt/tileset.json',
+      position: { alt: -27 },
+      maximumScreenSpaceError: 1
+    })
+    map.addLayer(tiles3dLayer)
+
+    logger = createLogger()
+    gui = createGUI()
+
+    logger.log('mars3d 地图初始化完成')
+    logger.log('大雁塔模型加载成功')
+
+    if (viewOptions.autoStart) {
+      setTimeout(playViewList, 1500)
+    }
+
+    return map
+  }
+
+  initMap()
+</script>
+<style>
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(270deg, #667eea 0%, #764ba2 100%);
+    color: #333;
+  }
+
+  #map3dContainer {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<!-- Settings Section -->
+<settings>
+  <head-metadata> </head-metadata>
+  <css-links>
+    ../../libs/utils/dat.gui-0.7.9/dat.gui.css
+  </css-links>
+  <js-links>
+    ../../libs/utils/dat.gui-0.7.9/dat.gui.min.js
+  </js-links>
+</settings>

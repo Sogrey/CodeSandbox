@@ -1,8 +1,8 @@
 <!--
 CodeSandbox 分享文件
-生成时间: 2026/5/23 09:05:21
+生成时间: 2026/5/23 09:26:45
 页面标题: 坐标批量转换
-原始页面链接: http://localhost:5173/CodeSandbox/
+原始页面链接: https://sogrey.top/CodeSandbox/
 -->
 
 <!-- CodeSandbox Template File -->
@@ -16,6 +16,177 @@ CodeSandbox 分享文件
 <script>
 let map
 let logger
+
+function parseInputCoords() {
+  const input = document.getElementById('inputCoords').value.trim()
+  if (!input) return []
+
+  const lines = input.split('\n')
+  const coords = []
+
+  lines.forEach(function(line) {
+    line = line.trim()
+    if (!line) return
+
+    const parts = line.split(/[,，\s]+/)
+    if (parts.length >= 2) {
+      const x = parseFloat(parts[0])
+      const y = parseFloat(parts[1])
+      if (!isNaN(x) && !isNaN(y)) {
+        coords.push([x, y])
+      }
+    }
+  })
+
+  return coords
+}
+
+function performConversion() {
+  const coords = parseInputCoords()
+  const sourceCrs = document.getElementById('sourceCrs').value
+  const resultDiv = document.getElementById('resultDiv')
+
+  if (coords.length === 0) {
+    resultDiv.textContent = '请输入有效的坐标数据!'
+    resultDiv.style.color = '#f44'
+    logger.log('坐标输入无效', 'error')
+    return
+  }
+
+  resultDiv.style.color = '#0f0'
+  let result = ''
+
+  coords.forEach(function(coord, index) {
+    const [x, y] = coord
+
+    result += '━━━ 坐标 ' + (index + 1) + ' ━━━\n'
+    result += '源: [' + x.toFixed(6) + ', ' + y.toFixed(6) + ']\n\n'
+
+    let wgs84, gcj02, bd09, mercator, cgcs2000_3, cgcs2000_6
+
+    try {
+      switch (sourceCrs) {
+        case 'WGS84':
+          wgs84 = [x, y]
+          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
+          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
+          mercator = mars3d.PointTrans.lonlat2mercator(wgs84)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'GCJ02':
+          gcj02 = [x, y]
+          wgs84 = mars3d.PointTrans.gcj2wgs(gcj02)
+          bd09 = mars3d.PointTrans.gcj2bd(gcj02)
+          mercator = mars3d.PointTrans.lonlat2mercator(gcj02)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'BD09':
+          bd09 = [x, y]
+          gcj02 = mars3d.PointTrans.bd2gcj(bd09)
+          wgs84 = mars3d.PointTrans.bd2wgs(bd09)
+          mercator = mars3d.PointTrans.lonlat2mercator(gcj02)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'Mercator':
+          mercator = [x, y]
+          const lonlat = mars3d.PointTrans.mercator2lonlat(mercator)
+          wgs84 = lonlat
+          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
+          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'CGCS2000_3':
+          cgcs2000_3 = [x, y]
+          wgs84 = mars3d.PointTrans.proj4Trans(cgcs2000_3, mars3d.CRS.CGCS2000_GK_Zone_3, mars3d.CRS.EPSG4326)
+          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
+          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
+          mercator = mars3d.PointTrans.lonlat2mercator(wgs84)
+          cgcs2000_6 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
+          break
+
+        case 'CGCS2000_6':
+          cgcs2000_6 = [x, y]
+          wgs84 = mars3d.PointTrans.proj4Trans(cgcs2000_6, mars3d.CRS.CGCS2000_GK_Zone_6, mars3d.CRS.EPSG4326)
+          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
+          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
+          mercator = mars3d.PointTrans.lonlat2mercator(wgs84)
+          cgcs2000_3 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
+          break
+      }
+
+      result += 'WGS84:      [' + wgs84[0].toFixed(6) + ', ' + wgs84[1].toFixed(6) + ']\n'
+      result += 'GCJ02:      [' + gcj02[0].toFixed(6) + ', ' + gcj02[1].toFixed(6) + ']\n'
+      result += 'BD09:       [' + bd09[0].toFixed(6) + ', ' + bd09[1].toFixed(6) + ']\n'
+      result += 'Mercator:   [' + mercator[0].toFixed(2) + ', ' + mercator[1].toFixed(2) + ']\n'
+      result += 'CGCS2000_3: [' + cgcs2000_3[0].toFixed(2) + ', ' + cgcs2000_3[1].toFixed(2) + ']\n'
+      result += 'CGCS2000_6: [' + cgcs2000_6[0].toFixed(2) + ', ' + cgcs2000_6[1].toFixed(2) + ']\n'
+
+    } catch (e) {
+      result += '转换失败: ' + e.message + '\n'
+    }
+
+    result += '\n'
+  })
+
+  resultDiv.textContent = result
+  logger.log('成功转换 ' + coords.length + ' 组坐标')
+}
+
+function initMap() {
+  map = new mars3d.Map('map3dContainer', {
+    scene: {
+      center: {
+        lat: 34.265,
+        lng: 108.954,
+        alt: 800000,
+        heading: 0,
+        pitch: -90
+      }
+    },
+    control: {
+      baseLayerPicker: true,
+      homeButton: true,
+      sceneModePicker: true,
+      navigationHelpButton: true,
+      fullscreenButton: true,
+      contextmenu: {
+        hasDefault: true
+      },
+    },
+    basemaps: [{
+      name: '天地图影像',
+      icon: 'https://data.mars3d.cn/img/thumbnail/basemap/tdt_img.png',
+      type: 'tdt',
+      layer: 'img_d',
+      show: true,
+    }, ],
+  })
+
+  createPanel()
+  logger = createLogger()
+
+  logger.log('mars3d 地图初始化完成')
+  logger.log('坐标转换工具已就绪')
+
+  document.getElementById('inputCoords').value = '108.954, 34.265\n117.225, 31.832'
+
+  return map
+}
+
+initMap()
+
+////////////////////////////////////
+//            UI
+////////////////////////////////////
+
 
 function createLogger() {
   const container = document.createElement('div')
@@ -210,172 +381,6 @@ function createPanel() {
   panel.appendChild(content)
   document.body.appendChild(panel)
 }
-
-function parseInputCoords() {
-  const input = document.getElementById('inputCoords').value.trim()
-  if (!input) return []
-
-  const lines = input.split('\n')
-  const coords = []
-
-  lines.forEach(function(line) {
-    line = line.trim()
-    if (!line) return
-
-    const parts = line.split(/[,，\s]+/)
-    if (parts.length >= 2) {
-      const x = parseFloat(parts[0])
-      const y = parseFloat(parts[1])
-      if (!isNaN(x) && !isNaN(y)) {
-        coords.push([x, y])
-      }
-    }
-  })
-
-  return coords
-}
-
-function performConversion() {
-  const coords = parseInputCoords()
-  const sourceCrs = document.getElementById('sourceCrs').value
-  const resultDiv = document.getElementById('resultDiv')
-
-  if (coords.length === 0) {
-    resultDiv.textContent = '请输入有效的坐标数据!'
-    resultDiv.style.color = '#f44'
-    logger.log('坐标输入无效', 'error')
-    return
-  }
-
-  resultDiv.style.color = '#0f0'
-  let result = ''
-
-  coords.forEach(function(coord, index) {
-    const [x, y] = coord
-
-    result += '━━━ 坐标 ' + (index + 1) + ' ━━━\n'
-    result += '源: [' + x.toFixed(6) + ', ' + y.toFixed(6) + ']\n\n'
-
-    let wgs84, gcj02, bd09, mercator, cgcs2000_3, cgcs2000_6
-
-    try {
-      switch (sourceCrs) {
-        case 'WGS84':
-          wgs84 = [x, y]
-          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
-          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
-          mercator = mars3d.PointTrans.lonlat2mercator(wgs84)
-          cgcs2000_3 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
-          cgcs2000_6 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
-          break
-
-        case 'GCJ02':
-          gcj02 = [x, y]
-          wgs84 = mars3d.PointTrans.gcj2wgs(gcj02)
-          bd09 = mars3d.PointTrans.gcj2bd(gcj02)
-          mercator = mars3d.PointTrans.lonlat2mercator(gcj02)
-          cgcs2000_3 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
-          cgcs2000_6 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
-          break
-
-        case 'BD09':
-          bd09 = [x, y]
-          gcj02 = mars3d.PointTrans.bd2gcj(bd09)
-          wgs84 = mars3d.PointTrans.bd2wgs(bd09)
-          mercator = mars3d.PointTrans.lonlat2mercator(gcj02)
-          cgcs2000_3 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
-          cgcs2000_6 = mars3d.PointTrans.proj4Trans(gcj02, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
-          break
-
-        case 'Mercator':
-          mercator = [x, y]
-          const lonlat = mars3d.PointTrans.mercator2lonlat(mercator)
-          wgs84 = lonlat
-          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
-          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
-          cgcs2000_3 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
-          cgcs2000_6 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
-          break
-
-        case 'CGCS2000_3':
-          cgcs2000_3 = [x, y]
-          wgs84 = mars3d.PointTrans.proj4Trans(cgcs2000_3, mars3d.CRS.CGCS2000_GK_Zone_3, mars3d.CRS.EPSG4326)
-          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
-          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
-          mercator = mars3d.PointTrans.lonlat2mercator(wgs84)
-          cgcs2000_6 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_6)
-          break
-
-        case 'CGCS2000_6':
-          cgcs2000_6 = [x, y]
-          wgs84 = mars3d.PointTrans.proj4Trans(cgcs2000_6, mars3d.CRS.CGCS2000_GK_Zone_6, mars3d.CRS.EPSG4326)
-          gcj02 = mars3d.PointTrans.wgs2gcj(wgs84)
-          bd09 = mars3d.PointTrans.wgs2bd(wgs84)
-          mercator = mars3d.PointTrans.lonlat2mercator(wgs84)
-          cgcs2000_3 = mars3d.PointTrans.proj4Trans(wgs84, mars3d.CRS.EPSG4326, mars3d.CRS.CGCS2000_GK_Zone_3)
-          break
-      }
-
-      result += 'WGS84:      [' + wgs84[0].toFixed(6) + ', ' + wgs84[1].toFixed(6) + ']\n'
-      result += 'GCJ02:      [' + gcj02[0].toFixed(6) + ', ' + gcj02[1].toFixed(6) + ']\n'
-      result += 'BD09:       [' + bd09[0].toFixed(6) + ', ' + bd09[1].toFixed(6) + ']\n'
-      result += 'Mercator:   [' + mercator[0].toFixed(2) + ', ' + mercator[1].toFixed(2) + ']\n'
-      result += 'CGCS2000_3: [' + cgcs2000_3[0].toFixed(2) + ', ' + cgcs2000_3[1].toFixed(2) + ']\n'
-      result += 'CGCS2000_6: [' + cgcs2000_6[0].toFixed(2) + ', ' + cgcs2000_6[1].toFixed(2) + ']\n'
-
-    } catch (e) {
-      result += '转换失败: ' + e.message + '\n'
-    }
-
-    result += '\n'
-  })
-
-  resultDiv.textContent = result
-  logger.log('成功转换 ' + coords.length + ' 组坐标')
-}
-
-function initMap() {
-  map = new mars3d.Map('map3dContainer', {
-    scene: {
-      center: {
-        lat: 34.265,
-        lng: 108.954,
-        alt: 800000,
-        heading: 0,
-        pitch: -90
-      }
-    },
-    control: {
-      baseLayerPicker: true,
-      homeButton: true,
-      sceneModePicker: true,
-      navigationHelpButton: true,
-      fullscreenButton: true,
-      contextmenu: {
-        hasDefault: true
-      },
-    },
-    basemaps: [{
-      name: '天地图影像',
-      icon: 'https://data.mars3d.cn/img/thumbnail/basemap/tdt_img.png',
-      type: 'tdt',
-      layer: 'img_d',
-      show: true,
-    }, ],
-  })
-
-  createPanel()
-  logger = createLogger()
-
-  logger.log('mars3d 地图初始化完成')
-  logger.log('坐标转换工具已就绪')
-
-  document.getElementById('inputCoords').value = '108.954, 34.265\n117.225, 31.832'
-
-  return map
-}
-
-initMap()
 </script>
 <style>
 html,

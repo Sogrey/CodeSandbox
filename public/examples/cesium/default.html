@@ -7,9 +7,12 @@
   <div id="cesiumContainer"></div>
 </template>
 <script>
-  var viewer = new Cesium.Viewer('cesiumContainer')
+// 使用你自己的 Cesium Ion 访问令牌
+Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI3OGEyMjQyNy04OGMyLTQyNTYtYTBiMS03YWU1YTk3NDU1NTYiLCJpZCI6MTIwMDIsImlhdCI6MTYwMzc2MzAzNX0.8QDXP7Ds18f95--kaezp4dTxpaOAn1gfJW3OxyO07oc'
 
-  console.log(viewer)
+var viewer = new Cesium.Viewer('cesiumContainer')
+
+console.log(viewer)
 </script>
 <style>
   html,
